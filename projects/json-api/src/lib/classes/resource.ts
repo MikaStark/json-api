@@ -16,6 +16,12 @@ export class Resource {
   relationships: Relationships = {};
   links: any = { };
 
+  private _deleted = false;
+
+  get deleted(): boolean {
+    return this._deleted;
+  }
+
   private get http(): HttpClient {
     return JsonApiService.http;
   }
@@ -177,6 +183,8 @@ export class Resource {
     if (!this.id) {
       return throwError('This resource has no id so it cannot be deleted');
     }
-    return this.http.delete<void>(`${this.url}/${this.id}`);
+    return this.http.delete<void>(`${this.url}/${this.id}`).pipe(
+      tap(() => this._deleted = true)
+    );
   }
 }
