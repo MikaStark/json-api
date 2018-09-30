@@ -37,6 +37,9 @@ export class Resource {
   }
 
   getRelationship<T extends Resource = Resource>(name: string, params?: Parameters): Observable<DocumentResource<T>> {
+    if (!this.id) {
+      return throwError('This resource has no id so it cannot get relationship');
+    }
     return this.http.get<DocumentResource<T>>(`${this.url}/${this.id}/relationships/${name}`, {
       params: this.params.httpParams(params)
     }).pipe(
@@ -45,6 +48,9 @@ export class Resource {
   }
 
   getRelationships<T extends Resource = Resource>(name: string, params?: Parameters): Observable<DocumentCollection<T>> {
+    if (!this.id) {
+      return throwError('This resource has no id so it cannot get relationships');
+    }
     return this.http.get<DocumentCollection<T>>(`${this.url}/${this.id}/relationships/${name}`, {
       params: this.params.httpParams(params)
     }).pipe(
