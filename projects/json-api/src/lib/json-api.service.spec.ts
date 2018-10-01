@@ -55,9 +55,36 @@ describe('JsonApiService', () => {
       ])
     );
 
+    beforeAll(() => JsonApiService.populateIncluded(documentResource));
     beforeAll(() => JsonApiService.populateDocumentResource(documentResource));
 
     it('should populate data from included', () => {
+      console.log(new DocumentResource(
+        new Resource('1', 'foo', {
+          some: 'data'
+        }, {
+            foo: new DocumentResource(
+              new Resource('2', 'foo')
+            ),
+            tests: new DocumentCollection([
+              new Resource('1', 'tests'),
+              new Resource('2', 'tests')
+            ])
+          }), [
+          new Resource('1', 'tests', {
+            test: 'data'
+          }),
+          new Resource('2', 'tests', {
+            test: 'more data'
+          }, {
+              foo: new DocumentResource(
+                new Resource('3', 'foo')
+              )
+            }),
+          new Resource('3', 'foo', {
+            foo: 'here it comes the data'
+          })
+        ]));
       const relationships = documentResource.data.relationships;
       const relationship = relationships.tests.data[0];
       const resource = documentResource.included[0];
@@ -109,6 +136,7 @@ describe('JsonApiService', () => {
         ]);
     });
 
+    beforeAll(() => JsonApiService.populateIncluded(documentCollection));
     beforeAll(() => JsonApiService.populateDocumentCollection(documentCollection));
 
     it('should populate data from included', () => {

@@ -5,7 +5,7 @@ import { Meta } from '../interfaces/meta';
 
 export class DocumentCollection<R extends Resource = Resource> extends Document {
   constructor(
-    public data: Resource[] = [],
+    public data: R[] = [],
     public included: Resource[] = [],
     public meta: Meta = {},
     public links: Links = {},

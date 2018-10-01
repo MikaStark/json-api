@@ -41,42 +41,26 @@ export class JsonApiService {
     for (const name in resourceToPopulate.relationships) {
       if (resourceToPopulate.relationships[name]) {
         const relationship = resourceToPopulate.relationships[name];
-        if (relationship instanceof DocumentResource) {
-          const resource = relationship.data;
-          this.populate(resource, document);
-        } else if (relationship instanceof DocumentCollection) {
+        if (Array.isArray(relationship.data)) {
           const resources = relationship.data;
           resources.map(resource => this.populate(resource, document));
+        } else {
+          const resource = relationship.data;
+          this.populate(resource, document);
         }
       }
     }
   }
 
-  private static generateIncludedResource(document: Document): void {
-    if (!document.included) {
-      document.included = [];
-      return;
-    }
-    document.included = document.included.map(included => {
-      const resource = new Resource(
-        included.id,
-        included.type,
-        included.attributes,
-        included.relationships,
-        included.links
-      );
-      this.populateResource(resource, document);
-      return resource;
-    });
-  }
-
   static populateDocumentResource(document: DocumentResource): void {
-    this.generateIncludedResource(document);
     this.populateResource(document.data, document);
   }
 
   static populateDocumentCollection(document: DocumentCollection): void {
-    this.generateIncludedResource(document);
     document.data.map(resource => this.populateResource(resource, document));
+  }
+
+  static populateIncluded(document: Document): void {
+    document.included.map(resource => this.populateResource(resource, document));
   }
 }
