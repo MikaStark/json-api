@@ -10,12 +10,6 @@ import { JsonApiService } from '../json-api.service';
 import { Parameters } from '../interfaces/parameters';
 
 export class Resource {
-  id: string;
-  type: string;
-  attributes: Attributes = {};
-  relationships: Relationships = {};
-  links: any = { };
-
   private _deleted = false;
 
   get deleted(): boolean {
@@ -33,6 +27,14 @@ export class Resource {
   private get params(): JsonApiParametersService {
     return JsonApiService.params;
   }
+
+  constructor(
+    public id: string = '',
+    public type: string = '',
+    public attributes: Attributes = {},
+    public relationships: Relationships = {},
+    public links: any = {}
+  ) { }
 
   private populateDocumentResource(document: DocumentResource): void {
     return JsonApiService.populateDocumentResource(document);
@@ -153,7 +155,7 @@ export class Resource {
         const savedRelationshipsIds = document.data.map(relationship => relationship.id);
         this.relationships[name].data = (this.relationships[name].data as T[])
           .filter(relationship => !savedRelationshipsIds.includes(relationship.id))
-          .concat(document.data);
+          .concat(document.data as T[]);
       })
     );
   }

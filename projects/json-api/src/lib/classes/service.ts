@@ -25,42 +25,40 @@ export class Service<R extends Resource = Resource> {
     return `${JsonApiService.url}/${this.type}`;
   }
 
-  private generateResource(data: Resource): R {
-    const resource = this.create();
-    resource.id = data.id;
-    resource.attributes = data.attributes;
-    resource.relationships = data.relationships;
-    return resource;
+  private generateResource(resource: Resource): R {
+    return new this.resource(
+      resource.id,
+      this.type,
+      resource.attributes,
+      resource.relationships,
+      resource.links
+    ) as R;
   }
 
   private generateDocumentCollection(document: Document): DocumentCollection<R> {
-    const documentCollection = new DocumentCollection<R>();
     const resources = document.data as Resource[];
-    documentCollection.data = resources.map(resource => this.generateResource(resource));
-    documentCollection.errors = document.errors;
-    documentCollection.meta = document.meta;
-    documentCollection.jsonapi = document.jsonapi;
-    documentCollection.links = document.links;
-    documentCollection.included = document.included;
-    return documentCollection;
+    return new DocumentCollection<R>(
+      resources.map(resource => this.generateResource(resource)),
+      document.included,
+      document.meta,
+      document.links,
+      document.jsonapi
+    );
   }
 
   private generateDocumentResource(document: Document): DocumentResource<R> {
-    const documentResource = new DocumentResource<R>();
     const resource = document.data as Resource;
-    documentResource.data = this.generateResource(resource);
-    documentResource.errors = document.errors;
-    documentResource.meta = document.meta;
-    documentResource.jsonapi = document.jsonapi;
-    documentResource.links = document.links;
-    documentResource.included = document.included;
-    return documentResource;
+    return new DocumentResource<R>(
+      this.generateResource(resource),
+      document.included,
+      document.meta,
+      document.links,
+      document.jsonapi
+    );
   }
 
   create(): R {
-    const resource = new this.resource();
-    resource.type = this.type;
-    return resource as R;
+    return new this.resource(null, this.type) as R;
   }
 
   all(params?: Parameters): Observable<DocumentCollection<R>> {

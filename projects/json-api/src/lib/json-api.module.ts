@@ -7,7 +7,6 @@ import { JsonApiService } from './json-api.service';
   imports: [HttpClientModule],
   exports: [HttpClientModule],
   providers: [
-    JsonApiService,
     {
       provide: HTTP_INTERCEPTORS,
       useClass: JsonApiInterceptorService,

@@ -7,7 +7,9 @@ import { Document } from './classes/document';
 import { DocumentResource } from './classes/document-resource';
 import { DocumentCollection } from './classes/document-collection';
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class JsonApiService {
 
   static url: string = null;
@@ -25,14 +27,17 @@ export class JsonApiService {
   }
 
   private static populate(resource: Resource, document: Document): void {
-    resource.attributes = document.included
+    const relationship = document.included
+      .concat(document.data || [])
       .find(included => included.id === resource.id && included.type === resource.type);
+    if (relationship) {
+      resource.attributes = relationship.attributes;
+      resource.relationships = relationship.relationships;
+      resource.links = relationship.links;
+    }
   }
 
   private static populateResource(resourceToPopulate: Resource, document: Document): void {
-    if (!document.included) {
-      return;
-    }
     for (const name in resourceToPopulate.relationships) {
       if (resourceToPopulate.relationships[name]) {
         const relationship = resourceToPopulate.relationships[name];
@@ -47,11 +52,31 @@ export class JsonApiService {
     }
   }
 
-   static populateDocumentResource(document: DocumentResource): void {
+  private static generateIncludedResource(document: Document): void {
+    if (!document.included) {
+      document.included = [];
+      return;
+    }
+    document.included = document.included.map(included => {
+      const resource = new Resource(
+        included.id,
+        included.type,
+        included.attributes,
+        included.relationships,
+        included.links
+      );
+      this.populateResource(resource, document);
+      return resource;
+    });
+  }
+
+  static populateDocumentResource(document: DocumentResource): void {
+    this.generateIncludedResource(document);
     this.populateResource(document.data, document);
   }
 
-   static populateDocumentCollection(document: DocumentCollection): void {
+  static populateDocumentCollection(document: DocumentCollection): void {
+    this.generateIncludedResource(document);
     document.data.map(resource => this.populateResource(resource, document));
   }
 }
