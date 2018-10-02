@@ -1,6 +1,6 @@
 import { Resource } from './resource';
-import { Links } from '../interfaces/links';
 import { Meta } from '../interfaces/meta';
+import { Links } from '../interfaces/links';
 
 export class Document {
   constructor(

@@ -1,13 +1,13 @@
-import { DocumentResource } from './document-resource';
 import { Observable, throwError } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
-import { DocumentCollection } from './document-collection';
+import { DocumentResource } from '../classes/document-resource';
+import { DocumentCollection } from '../classes/document-collection';
+import { catchError, tap, map } from 'rxjs/operators';
+import { JsonApiService as JsonApi } from '../json-api.service';
 import { Attributes } from '../interfaces/attributes';
 import { Relationships } from '../interfaces/relationships';
-import { JsonApiService as JsonApi } from '../json-api.service';
+import { Links } from '../interfaces/links';
 import { Parameters } from '../interfaces/parameters';
 import { Errors } from '../interfaces/errors';
-import { Links } from '../interfaces/links';
 
 export class Resource {
   private _deleted = false;
@@ -36,7 +36,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentResource(document))
+      map(document => JsonApi.builder.resource(document))
     );
   }
 
@@ -48,7 +48,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentCollection(document))
+      map(document => JsonApi.builder.collection(document))
     );
   }
 
@@ -66,7 +66,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentResource(document)),
+      map(document => JsonApi.builder.resource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -89,7 +89,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentResource(document)),
+      map(document => JsonApi.builder.resource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -105,7 +105,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentResource(document)),
+      map(document => JsonApi.builder.resource(document)),
       tap(document => this.relationships[name] = document)
     );
   }
@@ -118,7 +118,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentCollection(document)),
+      map(document => JsonApi.builder.collection(document)),
       tap(document => this.relationships[name] = document)
     );
   }
@@ -141,7 +141,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      tap(document => JsonApi.populateDocumentCollection(document)),
+      map(document => JsonApi.builder.collection(document)),
       tap(document => {
         const savedRelationshipsIds = document.data.map(relationship => relationship.id);
         this.relationships[name].data = (this.relationships[name].data as Resource[])
