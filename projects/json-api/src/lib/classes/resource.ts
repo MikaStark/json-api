@@ -7,6 +7,7 @@ import { Relationships } from '../interfaces/relationships';
 import { JsonApiService as JsonApi } from '../json-api.service';
 import { Parameters } from '../interfaces/parameters';
 import { Errors } from '../interfaces/errors';
+import { Links } from '../interfaces/links';
 
 export class Resource {
   private _deleted = false;
@@ -24,14 +25,14 @@ export class Resource {
     public type: string = '',
     public attributes: Attributes = {},
     public relationships: Relationships = {},
-    public links: any = {}
+    public links: Links = {}
   ) { }
 
-  getRelationship<T extends Resource = Resource>(name: string, params?: Parameters): Observable<DocumentResource<T>> {
+  getRelationship(name: string, params?: Parameters): Observable<DocumentResource> {
     if (!this.id) {
       return throwError('This resource has no id so it cannot get relationship');
     }
-    return JsonApi.http.get<DocumentResource<T>>(`${this.url}/${this.id}/relationships/${name}`, {
+    return JsonApi.http.get<DocumentResource>(`${this.url}/${this.id}/relationships/${name}`, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
@@ -39,11 +40,11 @@ export class Resource {
     );
   }
 
-  getRelationships<T extends Resource = Resource>(name: string, params?: Parameters): Observable<DocumentCollection<T>> {
+  getRelationships(name: string, params?: Parameters): Observable<DocumentCollection> {
     if (!this.id) {
       return throwError('This resource has no id so it cannot get relationships');
     }
-    return JsonApi.http.get<DocumentCollection<T>>(`${this.url}/${this.id}/relationships/${name}`, {
+    return JsonApi.http.get<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
@@ -96,11 +97,11 @@ export class Resource {
     );
   }
 
-  updateRelationship<T extends Resource = Resource>(name: string, params?: Parameters): Observable<DocumentResource<T>> {
+  updateRelationship(name: string, params?: Parameters): Observable<DocumentResource> {
     if (!this.id) {
       return throwError('This resource has no id so it cannot update a relationship');
     }
-    return JsonApi.http.patch<DocumentResource<T>>(`${this.url}/${this.id}/relationships/${name}`, this.relationships[name], {
+    return JsonApi.http.patch<DocumentResource>(`${this.url}/${this.id}/relationships/${name}`, this.relationships[name], {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
@@ -109,11 +110,11 @@ export class Resource {
     );
   }
 
-  updateRelationships<T extends Resource = Resource>(name: string, params?: Parameters): Observable<DocumentCollection<T>> {
+  updateRelationships(name: string, params?: Parameters): Observable<DocumentCollection> {
     if (!this.id) {
       throw new Error('This resource has no id so it cannot update relationships');
     }
-    return JsonApi.http.patch<DocumentCollection<T>>(`${this.url}/${this.id}/relationships/${name}`, this.relationships[name], {
+    return JsonApi.http.patch<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, this.relationships[name], {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
@@ -122,11 +123,11 @@ export class Resource {
     );
   }
 
-  saveRelationships<T extends Resource = Resource>(
+  saveRelationships(
     name: string,
     relationships: Resource[],
     params?: Parameters
-  ): Observable<DocumentCollection<T>> {
+  ): Observable<DocumentCollection> {
     if (!this.id) {
       return throwError('This resource has no id so it cannot save relationships');
     }
@@ -136,16 +137,16 @@ export class Resource {
         type: relationship.type
       }))
     };
-    return JsonApi.http.post<DocumentCollection<T>>(`${this.url}/${this.id}/relationships/${name}`, body, {
+    return JsonApi.http.post<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, body, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
       tap(document => JsonApi.populateDocumentCollection(document)),
       tap(document => {
         const savedRelationshipsIds = document.data.map(relationship => relationship.id);
-        this.relationships[name].data = (this.relationships[name].data as T[])
+        this.relationships[name].data = (this.relationships[name].data as Resource[])
           .filter(relationship => !savedRelationshipsIds.includes(relationship.id))
-          .concat(document.data as T[]);
+          .concat(document.data);
       })
     );
   }

@@ -52,15 +52,17 @@ export class JsonApiService {
     }
   }
 
+  private static populateIncluded(document: Document): void {
+    (document.included || []).map(resource => this.populateResource(resource, document));
+  }
+
   static populateDocumentResource(document: DocumentResource): void {
+    this.populateIncluded(document);
     this.populateResource(document.data, document);
   }
 
   static populateDocumentCollection(document: DocumentCollection): void {
+    this.populateIncluded(document);
     document.data.map(resource => this.populateResource(resource, document));
-  }
-
-  static populateIncluded(document: Document): void {
-    document.included.map(resource => this.populateResource(resource, document));
   }
 }

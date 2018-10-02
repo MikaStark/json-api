@@ -55,7 +55,6 @@ describe('JsonApiService', () => {
       ])
     );
 
-    beforeAll(() => JsonApiService.populateIncluded(documentResource));
     beforeAll(() => JsonApiService.populateDocumentResource(documentResource));
 
     it('should populate data from included', () => {
@@ -110,7 +109,6 @@ describe('JsonApiService', () => {
         ]);
     });
 
-    beforeAll(() => JsonApiService.populateIncluded(documentCollection));
     beforeAll(() => JsonApiService.populateDocumentCollection(documentCollection));
 
     it('should populate data from included', () => {
