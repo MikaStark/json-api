@@ -1,4 +1,5 @@
 export interface Parameters {
+  langs?: string[];
   include?: string[];
   fields?: {[name: string]: string[]};
   sort?: string[];
