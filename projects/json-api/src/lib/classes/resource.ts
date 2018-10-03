@@ -14,6 +14,7 @@ import { DocumentError } from './document-error';
 import { DocumentIdentifier } from './document-identifier';
 import { DocumentIdentifiers } from './document-identifiers';
 import { Relationships } from '../interfaces/relationships';
+import { Relationship } from '../interfaces/relationship';
 
 export class Resource extends Identifier {
 
@@ -22,7 +23,7 @@ export class Resource extends Identifier {
   private _deleted = false;
 
   public attributes: Attributes;
-  public relationships: Relationships;
+  public relationships: {[name: string]: Relationships|Relationship};
   public meta: Meta;
   public links: Links;
 
@@ -41,13 +42,11 @@ export class Resource extends Identifier {
   private static populate(resource: Resource, document: Document): void {
     for (const name in resource.relationships) {
       if (Array.isArray(resource.relationships[name].data)) {
-        const relationship = resource.relationships[name];
-        const relationshipData = relationship.data as Resource[];
-        relationship.data = relationshipData.map(data => this.findRelationship(data, document));
+        const relationships = resource.relationships[name].data as Resource[];
+        resource.relationships[name].data = relationships.map(data => this.findRelationship(data, document));
       } else {
-        const relationship = resource.relationships[name];
-        const relationshipData = relationship.data as Resource;
-        relationship.data = this.findRelationship(relationshipData, document);
+        const relationship = resource.relationships[name].data as Resource;
+        resource.relationships[name].data = this.findRelationship(relationship, document);
       }
     }
   }

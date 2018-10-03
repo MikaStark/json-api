@@ -1,5 +1,7 @@
-import { Relationship } from './relationship';
+import { Resource } from '../classes/resource';
+import { Links } from './links';
 
-export interface Relationships {
-  [name: string]: Relationship;
-}
+ export interface Relationships<R extends Resource = Resource> {
+   data: R[];
+   links: Links;
+ }
