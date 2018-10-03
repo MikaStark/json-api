@@ -7,29 +7,35 @@ import { Attributes } from '../interfaces/attributes';
 import { Relationships } from '../interfaces/relationships';
 import { Links } from '../interfaces/links';
 import { Parameters } from '../interfaces/parameters';
-import { Errors } from '../interfaces/errors';
 import { Document } from '../classes/document';
 import { ResourceTypes } from '../interfaces/resource-types';
+import { Identifier } from './identifier';
+import { Meta } from '../interfaces';
+import { DocumentError } from './document-error';
+import { DocumentIdentifier } from './document-identifier';
+import { DocumentIdentifiers } from './document-identifiers';
 
-export class Resource {
+export class Resource extends Identifier {
 
   private static types: ResourceTypes = {};
 
   private _deleted = false;
 
-  private static resourceType(type: string): typeof Resource {
-    const resourceType = this.types[type];
-    if (resourceType) {
-      return resourceType;
-    }
-    return Resource;
-  }
+  public attributes: Attributes;
+  public relationships: Relationships;
+  public meta: Meta;
+  public links: Links;
 
-  private static findRelationship(resource: Resource, document: Document): Resource {
-    const relationship = document.included
-      .concat(document.data || [])
-      .find(included => included.id === resource.id && included.type === resource.type);
-    return relationship || resource;
+  private static findRelationship(identifier: Identifier, document: Document): Resource {
+    const data = document.data as Resource|Resource[];
+    let relationship = document.included
+      .concat(data || [])
+      .find(included => included.id === identifier.id && included.type === identifier.type);
+    if (!relationship) {
+      relationship = new Resource(identifier.id, identifier.type);
+      relationship.meta = identifier.meta;
+    }
+    return relationship;
   }
 
   private static populate(resource: Resource, document: Document): void {
@@ -44,110 +50,104 @@ export class Resource {
     }
   }
 
-  private static relationships(relationships: Relationships): Relationships {
-    const newRelationships: Relationships = {};
-    for (const name in relationships) {
-      if (Array.isArray(relationships[name].data)) {
-        const collection = relationships[name] as DocumentCollection;
-        newRelationships[name] = new DocumentCollection(
-          collection.data.map(relationship => new Resource(
-            relationship.id,
-            relationship.type,
-            relationship.attributes,
-            relationship.relationships,
-            relationship.links
-          )),
-          collection.included,
-          collection.meta,
-          collection.links,
-          collection.jsonapi
-        );
+  private static relationships(data: Relationships): Relationships {
+    const relationships: Relationships = {};
+    for (const name in data) {
+      if (Array.isArray(data[name].data)) {
+        relationships[name] = this.createDocumentCollection(data[name] as DocumentCollection);
       } else {
-        const relationship = relationships[name] as DocumentResource;
-        newRelationships[name] = new DocumentResource(
-          new Resource(
-            relationship.data.id,
-            relationship.data.type,
-            relationship.data.attributes,
-            relationship.data.relationships,
-            relationship.data.links
-          ),
-          relationship.included,
-          relationship.meta,
-          relationship.links,
-          relationship.jsonapi
-        );
-
+        relationships[name] = this.createDocumentResource(data[name] as DocumentResource);
       }
     }
-    return newRelationships;
+    return relationships;
   }
 
-  static documentResource(document: DocumentResource): DocumentResource {
-    const included = document.included || [];
-    const dataType = this.resourceType(document.data.type);
-    const data = new dataType(
-      document.data.id,
-      document.data.type,
-      document.data.attributes,
-      this.relationships(document.data.relationships),
-      document.data.links
-    );
-    const documentResource = new DocumentResource(
-      data,
-      included.map(resource => {
-        const type = this.resourceType(resource.type);
-        return new type(
-          resource.id,
-          resource.type,
-          resource.attributes,
-          this.relationships(resource.relationships),
-          resource.links,
-        );
+  static createDocumentIdentifier(document: DocumentIdentifier): DocumentIdentifier {
+    const data = new Identifier(document.data.id, document.data.type);
+    data.meta = document.data.meta;
+    const documentIdentifier = new DocumentIdentifier(data, document.meta);
+    documentIdentifier.links = document.links;
+    documentIdentifier.jsonapi = document.jsonapi;
+    return documentIdentifier;
+  }
+
+  static createDocumentIdentifiers(document: DocumentIdentifiers): DocumentIdentifiers {
+    const documentIdentifiers = new DocumentIdentifiers(
+      document.data.map(resource => {
+        const data = new Identifier(resource.id, resource.type);
+        data.meta = resource.meta;
+        return data;
       }),
-      document.meta,
-      document.links,
-      document.jsonapi
+      document.meta
     );
-    documentResource.included.map(resource => this.populate(resource, documentResource));
-    this.populate(documentResource.data, documentResource);
+    documentIdentifiers.links = document.links;
+    documentIdentifiers.jsonapi = document.jsonapi;
+    return documentIdentifiers;
+  }
+
+  static createDocumentResource(document: DocumentResource): DocumentResource {
+    const data = this.create(document.data.id, document.data.type);
+    data.attributes = document.data.attributes;
+    data.relationships = this.relationships(document.data.relationships);
+    data.links = document.data.links;
+    data.meta = document.data.meta;
+    const documentResource = new DocumentResource(data, document.meta);
+    documentResource.links = document.links;
+    documentResource.jsonapi = document.jsonapi;
+    if (document.included) {
+      documentResource.included = document.included.map(resource => {
+        const includedData = this.create(resource.id, resource.type);
+        includedData.attributes = resource.attributes;
+        includedData.relationships = this.relationships(resource.relationships);
+        includedData.links = resource.links;
+        includedData.meta = resource.meta;
+        return includedData;
+      });
+      documentResource.included.map(resource => this.populate(resource, documentResource));
+      this.populate(documentResource.data, documentResource);
+    }
     return documentResource;
   }
 
-  static documentCollection(document: DocumentCollection): DocumentCollection {
-    const included = document.included || [];
+  static createDocumentCollection(document: DocumentCollection): DocumentCollection {
     const documentCollection = new DocumentCollection(
       document.data.map(resource => {
-        const type = this.resourceType(resource.type);
-        return new type(
-          resource.id,
-          resource.type,
-          resource.attributes,
-          this.relationships(resource.relationships),
-          resource.links,
-        );
+        const data = this.create(resource.id, resource.type);
+        data.attributes = resource.attributes;
+        data.relationships = this.relationships(resource.relationships);
+        data.links = resource.links;
+        data.meta = resource.meta;
+        return data;
       }),
-      included.map(resource => {
-        const type = this.resourceType(resource.type);
-        return new type(
-          resource.id,
-          resource.type,
-          resource.attributes,
-          this.relationships(resource.relationships),
-          resource.links,
-        );
-      }),
-      document.meta,
-      document.links,
-      document.jsonapi
+      document.meta
     );
-    documentCollection.included.map(resource => this.populate(resource, documentCollection));
-    documentCollection.data.map(resource => this.populate(resource, documentCollection));
+    documentCollection.links = document.links;
+    documentCollection.jsonapi = document.jsonapi;
+    if (document.included) {
+      documentCollection.included = document.included.map(resource => {
+        const includedData = this.create(resource.id, resource.type);
+        includedData.attributes = resource.attributes;
+        includedData.relationships = this.relationships(resource.relationships);
+        includedData.links = resource.links;
+        includedData.meta = resource.meta;
+        return includedData;
+      });
+      documentCollection.included.map(resource => this.populate(resource, documentCollection));
+      documentCollection.data.map(resource => this.populate(resource, documentCollection));
+    }
     return documentCollection;
   }
 
+  static create(id: string, type: string): Resource {
+    const resourceType = this.types[type];
+    if (resourceType) {
+      return new resourceType(id, type);
+    }
+    return new Resource(id, type);
+  }
+
   static register(name: string, type: typeof Resource): void {
-    Resource.types[name] = type;
+    this.types[name] = type;
   }
 
   get deleted(): boolean {
@@ -156,38 +156,6 @@ export class Resource {
 
   private get url(): string {
     return `${JsonApi.url}/${this.type}`;
-  }
-
-  constructor(
-    public id: string = '',
-    public type: string = '',
-    public attributes: Attributes = {},
-    public relationships: Relationships = {},
-    public links: Links = {}
-  ) { }
-
-  getRelationship(name: string, params?: Parameters): Observable<DocumentResource> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot get relationship');
-    }
-    return JsonApi.http.get<DocumentResource>(`${this.url}/${this.id}/relationships/${name}`, {
-      params: JsonApi.params.httpParams(params)
-    }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentResource(document))
-    );
-  }
-
-  getRelationships(name: string, params?: Parameters): Observable<DocumentCollection> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot get relationships');
-    }
-    return JsonApi.http.get<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, {
-      params: JsonApi.params.httpParams(params)
-    }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentCollection(document))
-    );
   }
 
   save(params?: Parameters): Observable<DocumentResource> {
@@ -203,8 +171,8 @@ export class Resource {
     return JsonApi.http.post<DocumentResource>(this.url, body, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentResource(document)),
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -213,10 +181,7 @@ export class Resource {
   }
 
   update(params?: Parameters): Observable<DocumentResource> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot be updated');
-    }
-    const body: any = {
+    const body = {
       data: {
         type: this.type,
         id: this.id,
@@ -226,8 +191,8 @@ export class Resource {
     return JsonApi.http.patch<DocumentResource>(`${this.url}/${this.id}`, body, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentResource(document)),
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -235,89 +200,85 @@ export class Resource {
     );
   }
 
+  delete(): Observable<void> {
+    return JsonApi.http.delete<void>(`${this.url}/${this.id}`).pipe(
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      tap(() => this._deleted = true)
+    );
+  }
+
+  getRelationship(name: string): Observable<DocumentIdentifier> {
+    return JsonApi.http.get<DocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`).pipe(
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentIdentifier(document))
+    );
+  }
+
+  getRelationships(name: string): Observable<DocumentIdentifiers> {
+    return JsonApi.http.get<DocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`).pipe(
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentIdentifiers(document))
+    );
+  }
+
   updateRelationship(name: string, params?: Parameters): Observable<DocumentResource> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot update a relationship');
-    }
-    return JsonApi.http.patch<DocumentResource>(`${this.url}/${this.id}/relationships/${name}`, this.relationships[name], {
+    const relationship = this.relationships[name] as DocumentResource;
+    const identifier = new Identifier(relationship.data.id, relationship.data.type);
+    return JsonApi.http.patch<DocumentResource>(`${this.url}/${this.id}/relationships/${name}`, identifier, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentResource(document)),
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentResource(document)),
       tap(document => this.relationships[name] = document)
     );
   }
 
   updateRelationships(name: string, params?: Parameters): Observable<DocumentCollection> {
-    if (!this.id) {
-      throw new Error('This resource has no id so it cannot update relationships');
-    }
-    return JsonApi.http.patch<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, this.relationships[name], {
+    const relationship = this.relationships[name] as DocumentCollection;
+    const identifiers = relationship.data.map(resource => new Identifier(resource.id, resource.type));
+    return JsonApi.http.patch<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, identifiers, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentCollection(document)),
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentCollection(document)),
       tap(document => this.relationships[name] = document)
     );
   }
 
   saveRelationships(
     name: string,
-    relationships: Resource[],
+    relationships: Identifier[],
     params?: Parameters
   ): Observable<DocumentCollection> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot save relationships');
-    }
-    const body = {
-      data: relationships.map(relationship => ({
-        id: relationship.id,
-        type: relationship.type
-      }))
-    };
-    return JsonApi.http.post<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, body, {
+    return JsonApi.http.post<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, {
+      data: relationships
+    }, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentCollection(document)),
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentCollection(document)),
       tap(document => {
         const savedRelationshipsIds = document.data.map(relationship => relationship.id);
-        this.relationships[name].data = (this.relationships[name].data as Resource[])
+        const collection = this.relationships[name] as DocumentCollection;
+        this.relationships[name].data = collection.data
           .filter(relationship => !savedRelationshipsIds.includes(relationship.id))
           .concat(document.data);
       })
     );
   }
 
-  deleteRelationships(name: string, relationships: Resource[]): Observable<void> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot update a relationship');
-    }
+  deleteRelationships(name: string, relationships: Identifier[]): Observable<void> {
     const body = {
-      data: relationships.map(relationship => ({
-        id: relationship.id,
-        type: relationship.type
-      }))
+      data: relationships
     };
-    return JsonApi.http.request<void>('delete', `${this.url}/${this.id}/relationships/${name}`, {
-      body
-    }).pipe(
-      catchError(err => throwError(err as Errors)),
+    return JsonApi.http.request<void>('delete', `${this.url}/${this.id}/relationships/${name}`, { body }).pipe(
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       tap(() => {
         const deletedRelationshipsIds = body.data.map(relationship => relationship.id);
-        this.relationships[name].data = (this.relationships[name].data as Resource[])
+        const collection = this.relationships[name] as DocumentCollection;
+        this.relationships[name].data = collection.data
           .filter(relationship => !deletedRelationshipsIds.includes(relationship.id));
       })
-    );
-  }
-
-  delete(): Observable<void> {
-    if (!this.id) {
-      return throwError('This resource has no id so it cannot be deleted');
-    }
-    return JsonApi.http.delete<void>(`${this.url}/${this.id}`).pipe(
-      catchError(err => throwError(err as Errors)),
-      tap(() => this._deleted = true)
     );
   }
 }

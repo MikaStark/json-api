@@ -1,10 +1,10 @@
-import { Resource } from './resource';
 import { Document } from './document';
 import { Meta } from '../interfaces/meta';
+import { Identifier } from './identifier';
 
-export class DocumentResource<R extends Resource = Resource> extends Document {
+export class DocumentIdentifiers extends Document {
   constructor(
-    public data: R,
+    public data: Identifier[],
     public meta: Meta
   ) {
     super(data, meta);

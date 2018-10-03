@@ -3,9 +3,9 @@ import { DocumentCollection } from './document-collection';
 import { DocumentResource } from './document-resource';
 import { JsonApiService as JsonApi } from '../json-api.service';
 import { Parameters } from '../interfaces/parameters';
-import { Errors } from '../interfaces/errors';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { DocumentError } from './document-error';
 
 export class Service<R extends Resource = Resource> {
   private get url(): string {
@@ -27,8 +27,8 @@ export class Service<R extends Resource = Resource> {
     return JsonApi.http.get<DocumentCollection<R>>(this.url, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentCollection(document) as DocumentCollection<R>)
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentCollection(document) as DocumentCollection<R>)
     );
   }
 
@@ -36,8 +36,8 @@ export class Service<R extends Resource = Resource> {
     return JsonApi.http.get<DocumentResource<R>>(`${this.url}/${id}`, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(err as Errors)),
-      map(document => Resource.documentResource(document) as DocumentResource<R>)
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => Resource.createDocumentResource(document) as DocumentResource<R>)
     );
   }
 }

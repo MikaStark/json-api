@@ -1,13 +1,15 @@
 import { Resource } from './resource';
 import { Meta } from '../interfaces/meta';
 import { Links } from '../interfaces/links';
+import { Identifier } from './identifier';
 
 export class Document {
+  public included: Resource[];
+  public links: Links;
+  public jsonapi: any;
+
   constructor(
-    public data: Resource|Resource[] = null,
-    public included: Resource[] = [],
-    public meta: Meta = {},
-    public links: Links = {},
-    public jsonapi: any = {}
+    public data: Resource|Resource[]|Identifier|Identifier[],
+    public meta: Meta
   ) { }
 }

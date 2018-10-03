@@ -14,9 +14,7 @@ export class JsonApiInterceptorService implements HttpInterceptor {
     request = request.clone({
       setHeaders: {
         'Content-Type': 'application/vnd.api+json',
-        Accept: `application/vnd.${this.version}+json`,
-        // tslint:disable-next-line:max-line-length
-        Authorization: 'bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOlwvXC9wcC5kZXYtYWxsLWRvY2tlcjEuaW5mcmFkdmUuZnJcL2FwaVwvYXV0aFwvbG9naW4iLCJpYXQiOjE1Mzg0NzU2MzIsImV4cCI6MTUzODU2MjAzMiwibmJmIjoxNTM4NDc1NjMyLCJqdGkiOiJSN0VSZ2UyUmlXeEN4cmZxIiwic3ViIjoidGVzdGF0b20ifQ.4FaGDTiJ922cfpkQRWV9R4e8d9fP25dw5mv2bHRrVu8'
+        Accept: `application/vnd.${this.version}+json`
       }
     });
     return next.handle(request);
