@@ -1,6 +1,5 @@
-import { DocumentCollection } from '../classes/document-collection';
-import { DocumentResource } from '../classes/document-resource';
+import { Relationship } from './relationship';
 
 export interface Relationships {
-  [name: string]: DocumentCollection | DocumentResource;
+  [name: string]: Relationship;
 }

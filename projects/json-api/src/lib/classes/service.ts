@@ -1,5 +1,5 @@
 import { Resource } from './resource';
-import { DocumentCollection } from './document-collection';
+import { DocumentResources } from './document-resources';
 import { DocumentResource } from './document-resource';
 import { JsonApiService as JsonApi } from '../json-api.service';
 import { Parameters } from '../interfaces/parameters';
@@ -23,12 +23,12 @@ export class Service<R extends Resource = Resource> {
     return new this.resource(null, this.type) as R;
   }
 
-  all(params?: Parameters): Observable<DocumentCollection<R>> {
-    return JsonApi.http.get<DocumentCollection<R>>(this.url, {
+  all(params?: Parameters): Observable<DocumentResources<R>> {
+    return JsonApi.http.get<DocumentResources<R>>(this.url, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => Resource.createDocumentCollection(document) as DocumentCollection<R>)
+      map(document => Resource.createDocumentResources(document) as DocumentResources<R>)
     );
   }
 

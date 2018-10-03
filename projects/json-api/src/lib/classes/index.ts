@@ -1,4 +1,4 @@
-export * from './document-collection';
+export * from './document-resources';
 export * from './document-resource';
 export * from './document-identifier';
 export * from './document-identifiers';

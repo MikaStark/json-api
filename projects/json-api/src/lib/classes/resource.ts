@@ -1,19 +1,19 @@
 import { Observable, throwError } from 'rxjs';
 import { DocumentResource } from '../classes/document-resource';
-import { DocumentCollection } from '../classes/document-collection';
+import { DocumentResources } from './document-resources';
 import { catchError, tap, map } from 'rxjs/operators';
 import { JsonApiService as JsonApi } from '../json-api.service';
 import { Attributes } from '../interfaces/attributes';
-import { Relationships } from '../interfaces/relationships';
 import { Links } from '../interfaces/links';
 import { Parameters } from '../interfaces/parameters';
 import { Document } from '../classes/document';
 import { ResourceTypes } from '../interfaces/resource-types';
 import { Identifier } from './identifier';
-import { Meta } from '../interfaces';
+import { Meta } from '../interfaces/meta';
 import { DocumentError } from './document-error';
 import { DocumentIdentifier } from './document-identifier';
 import { DocumentIdentifiers } from './document-identifiers';
+import { Relationships } from '../interfaces/relationships';
 
 export class Resource extends Identifier {
 
@@ -41,25 +41,15 @@ export class Resource extends Identifier {
   private static populate(resource: Resource, document: Document): void {
     for (const name in resource.relationships) {
       if (Array.isArray(resource.relationships[name].data)) {
-        const relationships = resource.relationships[name] as DocumentCollection;
-        relationships.data = relationships.data.map(data => this.findRelationship(data, document));
+        const relationship = resource.relationships[name];
+        const relationshipData = relationship.data as Resource[];
+        relationship.data = relationshipData.map(data => this.findRelationship(data, document));
       } else {
-        const relationship = resource.relationships[name] as DocumentResource;
-        relationship.data = this.findRelationship(relationship.data, document);
+        const relationship = resource.relationships[name];
+        const relationshipData = relationship.data as Resource;
+        relationship.data = this.findRelationship(relationshipData, document);
       }
     }
-  }
-
-  private static relationships(data: Relationships): Relationships {
-    const relationships: Relationships = {};
-    for (const name in data) {
-      if (Array.isArray(data[name].data)) {
-        relationships[name] = this.createDocumentCollection(data[name] as DocumentCollection);
-      } else {
-        relationships[name] = this.createDocumentResource(data[name] as DocumentResource);
-      }
-    }
-    return relationships;
   }
 
   static createDocumentIdentifier(document: DocumentIdentifier): DocumentIdentifier {
@@ -88,53 +78,65 @@ export class Resource extends Identifier {
   static createDocumentResource(document: DocumentResource): DocumentResource {
     const data = this.create(document.data.id, document.data.type);
     data.attributes = document.data.attributes;
-    data.relationships = this.relationships(document.data.relationships);
     data.links = document.data.links;
     data.meta = document.data.meta;
+
     const documentResource = new DocumentResource(data, document.meta);
-    documentResource.links = document.links;
-    documentResource.jsonapi = document.jsonapi;
+
     if (document.included) {
       documentResource.included = document.included.map(resource => {
         const includedData = this.create(resource.id, resource.type);
         includedData.attributes = resource.attributes;
-        includedData.relationships = this.relationships(resource.relationships);
         includedData.links = resource.links;
         includedData.meta = resource.meta;
+        if (resource.relationships) {
+          includedData.relationships = resource.relationships;
+        }
         return includedData;
       });
       documentResource.included.map(resource => this.populate(resource, documentResource));
-      this.populate(documentResource.data, documentResource);
     }
+
+    if (document.data.relationships) {
+      data.relationships = document.data.relationships;
+      this.populate(data, documentResource);
+    }
+
+    documentResource.links = document.links;
+    documentResource.jsonapi = document.jsonapi;
     return documentResource;
   }
 
-  static createDocumentCollection(document: DocumentCollection): DocumentCollection {
-    const documentCollection = new DocumentCollection(
-      document.data.map(resource => {
-        const data = this.create(resource.id, resource.type);
-        data.attributes = resource.attributes;
-        data.relationships = this.relationships(resource.relationships);
-        data.links = resource.links;
-        data.meta = resource.meta;
-        return data;
-      }),
-      document.meta
-    );
+  static createDocumentResources(document: DocumentResources): DocumentResources {
+    const documentCollection = new DocumentResources(null, document.meta);
     documentCollection.links = document.links;
     documentCollection.jsonapi = document.jsonapi;
+
     if (document.included) {
       documentCollection.included = document.included.map(resource => {
         const includedData = this.create(resource.id, resource.type);
         includedData.attributes = resource.attributes;
-        includedData.relationships = this.relationships(resource.relationships);
+        if (resource.relationships) {
+          includedData.relationships = resource.relationships;
+        }
         includedData.links = resource.links;
         includedData.meta = resource.meta;
         return includedData;
       });
       documentCollection.included.map(resource => this.populate(resource, documentCollection));
-      documentCollection.data.map(resource => this.populate(resource, documentCollection));
     }
+
+    documentCollection.data = document.data.map(resource => {
+      const data = this.create(resource.id, resource.type);
+      data.attributes = resource.attributes;
+      data.links = resource.links;
+      data.meta = resource.meta;
+      if (resource.relationships) {
+        data.relationships = resource.relationships;
+        this.populate(data, documentCollection);
+      }
+      return data;
+    });
     return documentCollection;
   }
 
@@ -233,14 +235,14 @@ export class Resource extends Identifier {
     );
   }
 
-  updateRelationships(name: string, params?: Parameters): Observable<DocumentCollection> {
-    const relationship = this.relationships[name] as DocumentCollection;
+  updateRelationships(name: string, params?: Parameters): Observable<DocumentResources> {
+    const relationship = this.relationships[name] as DocumentResources;
     const identifiers = relationship.data.map(resource => new Identifier(resource.id, resource.type));
-    return JsonApi.http.patch<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, identifiers, {
+    return JsonApi.http.patch<DocumentResources>(`${this.url}/${this.id}/relationships/${name}`, identifiers, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => Resource.createDocumentCollection(document)),
+      map(document => Resource.createDocumentResources(document)),
       tap(document => this.relationships[name] = document)
     );
   }
@@ -249,17 +251,17 @@ export class Resource extends Identifier {
     name: string,
     relationships: Identifier[],
     params?: Parameters
-  ): Observable<DocumentCollection> {
-    return JsonApi.http.post<DocumentCollection>(`${this.url}/${this.id}/relationships/${name}`, {
+  ): Observable<DocumentResources> {
+    return JsonApi.http.post<DocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
       data: relationships
     }, {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => Resource.createDocumentCollection(document)),
+      map(document => Resource.createDocumentResources(document)),
       tap(document => {
         const savedRelationshipsIds = document.data.map(relationship => relationship.id);
-        const collection = this.relationships[name] as DocumentCollection;
+        const collection = this.relationships[name] as DocumentResources;
         this.relationships[name].data = collection.data
           .filter(relationship => !savedRelationshipsIds.includes(relationship.id))
           .concat(document.data);
@@ -275,7 +277,7 @@ export class Resource extends Identifier {
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       tap(() => {
         const deletedRelationshipsIds = body.data.map(relationship => relationship.id);
-        const collection = this.relationships[name] as DocumentCollection;
+        const collection = this.relationships[name] as DocumentResources;
         this.relationships[name].data = collection.data
           .filter(relationship => !deletedRelationshipsIds.includes(relationship.id));
       })
