@@ -8,11 +8,15 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 export class Service<R extends Resource = Resource> {
-  type: string;
-  resource: typeof Resource = Resource;
-
   private get url(): string {
     return `${JsonApi.url}/${this.type}`;
+  }
+
+  constructor(
+    public type: string,
+    public resource: typeof Resource = Resource
+  ) {
+    Resource.register(type, resource);
   }
 
   create(): R {
@@ -24,7 +28,7 @@ export class Service<R extends Resource = Resource> {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.collection(document, this.resource) as DocumentCollection<R>)
+      map(document => Resource.documentCollection(document) as DocumentCollection<R>)
     );
   }
 
@@ -33,7 +37,7 @@ export class Service<R extends Resource = Resource> {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.resource(document, this.resource) as DocumentResource<R>)
+      map(document => Resource.documentResource(document) as DocumentResource<R>)
     );
   }
 }

@@ -8,9 +8,147 @@ import { Relationships } from '../interfaces/relationships';
 import { Links } from '../interfaces/links';
 import { Parameters } from '../interfaces/parameters';
 import { Errors } from '../interfaces/errors';
+import { Document } from '../classes/document';
+import { ResourceTypes } from '../interfaces/resource-types';
 
 export class Resource {
+
+  private static types: ResourceTypes = {};
+
   private _deleted = false;
+
+  private static resourceType(type: string): typeof Resource {
+    const resourceType = this.types[type];
+    if (resourceType) {
+      return resourceType;
+    }
+    return Resource;
+  }
+
+  private static findRelationship(resource: Resource, document: Document): Resource {
+    const relationship = document.included
+      .concat(document.data || [])
+      .find(included => included.id === resource.id && included.type === resource.type);
+    return relationship || resource;
+  }
+
+  private static populate(resource: Resource, document: Document): void {
+    for (const name in resource.relationships) {
+      if (Array.isArray(resource.relationships[name].data)) {
+        const relationships = resource.relationships[name] as DocumentCollection;
+        relationships.data = relationships.data.map(data => this.findRelationship(data, document));
+      } else {
+        const relationship = resource.relationships[name] as DocumentResource;
+        relationship.data = this.findRelationship(relationship.data, document);
+      }
+    }
+  }
+
+  private static relationships(relationships: Relationships): Relationships {
+    const newRelationships: Relationships = {};
+    for (const name in relationships) {
+      if (Array.isArray(relationships[name].data)) {
+        const collection = relationships[name] as DocumentCollection;
+        newRelationships[name] = new DocumentCollection(
+          collection.data.map(relationship => new Resource(
+            relationship.id,
+            relationship.type,
+            relationship.attributes,
+            relationship.relationships,
+            relationship.links
+          )),
+          collection.included,
+          collection.meta,
+          collection.links,
+          collection.jsonapi
+        );
+      } else {
+        const relationship = relationships[name] as DocumentResource;
+        newRelationships[name] = new DocumentResource(
+          new Resource(
+            relationship.data.id,
+            relationship.data.type,
+            relationship.data.attributes,
+            relationship.data.relationships,
+            relationship.data.links
+          ),
+          relationship.included,
+          relationship.meta,
+          relationship.links,
+          relationship.jsonapi
+        );
+
+      }
+    }
+    return newRelationships;
+  }
+
+  static documentResource(document: DocumentResource): DocumentResource {
+    const included = document.included || [];
+    const dataType = this.resourceType(document.data.type);
+    const data = new dataType(
+      document.data.id,
+      document.data.type,
+      document.data.attributes,
+      this.relationships(document.data.relationships),
+      document.data.links
+    );
+    const documentResource = new DocumentResource(
+      data,
+      included.map(resource => {
+        const type = this.resourceType(resource.type);
+        return new type(
+          resource.id,
+          resource.type,
+          resource.attributes,
+          this.relationships(resource.relationships),
+          resource.links,
+        );
+      }),
+      document.meta,
+      document.links,
+      document.jsonapi
+    );
+    documentResource.included.map(resource => this.populate(resource, documentResource));
+    this.populate(documentResource.data, documentResource);
+    return documentResource;
+  }
+
+  static documentCollection(document: DocumentCollection): DocumentCollection {
+    const included = document.included || [];
+    const documentCollection = new DocumentCollection(
+      document.data.map(resource => {
+        const type = this.resourceType(resource.type);
+        return new type(
+          resource.id,
+          resource.type,
+          resource.attributes,
+          this.relationships(resource.relationships),
+          resource.links,
+        );
+      }),
+      included.map(resource => {
+        const type = this.resourceType(resource.type);
+        return new type(
+          resource.id,
+          resource.type,
+          resource.attributes,
+          this.relationships(resource.relationships),
+          resource.links,
+        );
+      }),
+      document.meta,
+      document.links,
+      document.jsonapi
+    );
+    documentCollection.included.map(resource => this.populate(resource, documentCollection));
+    documentCollection.data.map(resource => this.populate(resource, documentCollection));
+    return documentCollection;
+  }
+
+  static register(name: string, type: typeof Resource): void {
+    Resource.types[name] = type;
+  }
 
   get deleted(): boolean {
     return this._deleted;
@@ -36,7 +174,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.resource(document))
+      map(document => Resource.documentResource(document))
     );
   }
 
@@ -48,7 +186,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.collection(document))
+      map(document => Resource.documentCollection(document))
     );
   }
 
@@ -66,7 +204,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.resource(document)),
+      map(document => Resource.documentResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -89,7 +227,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.resource(document)),
+      map(document => Resource.documentResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -105,7 +243,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.resource(document)),
+      map(document => Resource.documentResource(document)),
       tap(document => this.relationships[name] = document)
     );
   }
@@ -118,7 +256,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.collection(document)),
+      map(document => Resource.documentCollection(document)),
       tap(document => this.relationships[name] = document)
     );
   }
@@ -141,7 +279,7 @@ export class Resource {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(err as Errors)),
-      map(document => JsonApi.builder.collection(document)),
+      map(document => Resource.documentCollection(document)),
       tap(document => {
         const savedRelationshipsIds = document.data.map(relationship => relationship.id);
         this.relationships[name].data = (this.relationships[name].data as Resource[])

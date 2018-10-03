@@ -6,3 +6,4 @@ export * from './links';
 export * from './meta';
 export * from './parameters';
 export * from './relationships';
+export * from './resource-types';

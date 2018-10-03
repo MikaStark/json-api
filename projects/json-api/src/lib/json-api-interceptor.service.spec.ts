@@ -3,7 +3,6 @@ import { TestBed, inject, async } from '@angular/core/testing';
 import { JsonApiInterceptorService } from './json-api-interceptor.service';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
-import { JSON_API_VERSION } from './json-api-version';
 
 const verison = 'test.v1';
 const contentType = 'application/vnd.api+json';
@@ -11,18 +10,7 @@ const accept = `application/vnd.${verison}+json`;
 
 describe('JsonApiInterceptorService', () => {
   beforeEach(() => TestBed.configureTestingModule({
-    imports: [HttpClientTestingModule],
-      providers: [
-        {
-          provide: HTTP_INTERCEPTORS,
-          useClass: JsonApiInterceptorService,
-          multi: true
-        },
-        {
-          provide: JSON_API_VERSION,
-          useValue: verison
-        }
-      ]
+    imports: [HttpClientTestingModule]
   }));
 
   afterEach(inject([HttpTestingController], (httpMock: HttpTestingController) => {
