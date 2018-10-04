@@ -15,7 +15,7 @@ const version = 'test.v0';
 const url = 'http://fake.api.url';
 const type = 'fake';
 
-describe('JsonApiQueriesService', () => {
+describe('Service', () => {
   let service: Service;
   const parametersService = jasmine.createSpyObj('JsonApiParametersService', ['httpParams']);
 
