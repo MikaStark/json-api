@@ -12,12 +12,8 @@ export class Service<R extends Resource = Resource> {
     return `${JsonApi.url}/${this.type}`;
   }
 
-  constructor(
-    public type: string,
-    public resource: typeof Resource = Resource
-  ) {
-    JsonApi.builder.register(type, resource);
-  }
+  public type: string;
+  public resource = Resource;
 
   create(): R {
     return new this.resource(null, this.type) as R;

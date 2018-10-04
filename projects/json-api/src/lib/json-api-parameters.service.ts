@@ -16,7 +16,7 @@ export class JsonApiParametersService {
     return newParams;
   }
 
-  private collection(params: HttpParams, name: string, values: {[name: string]: number}): HttpParams {
+  private collection(params: HttpParams, name: string, values: {[name: string]: string|number}): HttpParams {
     let newParams = params;
     for (const key in values) {
       if (values[key]) {
@@ -51,7 +51,7 @@ export class JsonApiParametersService {
       params = this.collection(params, 'page', value.page);
     }
     if (value.filter) {
-      params = this.list(params, 'filter', value.filter);
+      params = this.collection(params, 'filter', value.filter);
     }
     return params;
   }

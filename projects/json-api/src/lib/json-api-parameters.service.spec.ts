@@ -31,22 +31,29 @@ describe('JsonApiParametersService', () => {
       entity1: ['field1', 'field2'],
       entity2: ['field3', 'field4'],
     };
-    expect(params.has('fields[entity1]')).toBeFalsy();
-    expect(params.has('fields[entity2]')).toBeFalsy();
+    Object.keys(fields).map(key => {
+      expect(params.has(`fields[${key}]`)).toBeFalsy();
+    });
     params = service.httpParams({fields});
-    expect(params.has('fields[entity1]')).toBeTruthy();
-    expect(params.has('fields[entity2]')).toBeTruthy();
-    expect(params.get('fields[entity1]')).toBe(fields.entity1.join(','));
-    expect(params.get('fields[entity2]')).toBe(fields.entity2.join(','));
+    Object.keys(fields).map(key => {
+      expect(params.has(`fields[${key}]`)).toBeTruthy();
+      expect(params.get(`fields[${key}]`)).toBe(fields[key].join(','));
+    });
   }));
 
   it('should set filter', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const filter = ['value1', 'value2'];
-    expect(params.has('filter')).toBeFalsy();
+    const filter = {
+      key1: 'value1',
+      key2: 'value2'
+    };
+    Object.keys(filter).map(key => {
+      expect(params.has(`filter[${key}]`)).toBeFalsy();
+    });
     params = service.httpParams({filter});
-    expect(params.has('filter')).toBeTruthy();
-    expect(params.has('filter')).toBeTruthy();
-    expect(params.get('filter')).toBe(filter.join(','));
+    Object.keys(filter).map(key => {
+      expect(params.has(`filter[${key}]`)).toBeTruthy();
+      expect(params.get(`filter[${key}]`)).toBe(filter[key]);
+    });
   }));
 
   it('should set page', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
@@ -54,12 +61,14 @@ describe('JsonApiParametersService', () => {
       number: 5,
       size: 25
     };
-    expect(params.has('page')).toBeFalsy();
+    Object.keys(page).map(key => {
+      expect(params.has(`page[${key}]`)).toBeFalsy();
+    });
     params = service.httpParams({page});
-    expect(params.has('page[number]')).toBeTruthy();
-    expect(params.get('page[number]')).toBe(page.number.toString());
-    expect(params.has('page[size]')).toBeTruthy();
-    expect(params.get('page[size]')).toBe(page.size.toString());
+    Object.keys(page).map(key => {
+      expect(params.has(`page[${key}]`)).toBeTruthy();
+      expect(params.get(`page[${key}]`)).toBe(page[key].toString());
+    });
   }));
 
   it('should set sort', inject([JsonApiParametersService], (service: JsonApiParametersService) => {

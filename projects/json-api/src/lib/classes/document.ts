@@ -6,7 +6,7 @@ import { Identifier } from './identifier';
 export class Document {
   public included: Resource[];
   public links: Links;
-  public jsonapi: any;
+  public jsonapi: {version: string; meta: Meta};
 
   constructor(
     public data: Resource|Resource[]|Identifier|Identifier[],

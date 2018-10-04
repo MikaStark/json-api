@@ -1,8 +1,9 @@
 import { NgModule, Optional, SkipSelf, Inject } from '@angular/core';
 import { HttpClientModule, HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
 import { JsonApiInterceptorService } from './json-api-interceptor.service';
-import { JSON_API_URL, JsonApiBuilderService } from '../public_api';
 import { JsonApiParametersService } from './json-api-parameters.service';
+import { JsonApiBuilderService } from './json-api-builder.service';
+import { JSON_API_URL } from './json-api-url';
 
 @NgModule({
   imports: [HttpClientModule],
