@@ -1,7 +1,7 @@
 import { Resource } from './resource';
 import { DocumentResources } from './document-resources';
 import { DocumentResource } from './document-resource';
-import { JsonApiService as JsonApi } from '../json-api.service';
+import { JsonApiModule as JsonApi } from '../json-api.module';
 import { Parameters } from '../interfaces/parameters';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
@@ -16,7 +16,7 @@ export class Service<R extends Resource = Resource> {
     public type: string,
     public resource: typeof Resource = Resource
   ) {
-    Resource.register(type, resource);
+    JsonApi.builder.register(type, resource);
   }
 
   create(): R {
@@ -28,7 +28,7 @@ export class Service<R extends Resource = Resource> {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => Resource.createDocumentResources(document) as DocumentResources<R>)
+      map(document => JsonApi.builder.documentResources(document) as DocumentResources<R>)
     );
   }
 
@@ -37,7 +37,7 @@ export class Service<R extends Resource = Resource> {
       params: JsonApi.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => Resource.createDocumentResource(document) as DocumentResource<R>)
+      map(document => JsonApi.builder.documentResource(document) as DocumentResource<R>)
     );
   }
 }

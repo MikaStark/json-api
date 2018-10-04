@@ -69,4 +69,12 @@ describe('JsonApiParametersService', () => {
     expect(params.has('sort')).toBeTruthy();
     expect(params.get('sort')).toBe(sort.join(','));
   }));
+
+  it('should set langs', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
+    const langs = ['lang1', 'lang2'];
+    expect(params.has('page')).toBeFalsy();
+    params = service.httpParams({langs});
+    expect(params.has('langs')).toBeTruthy();
+    expect(params.get('langs')).toBe(langs.join(','));
+  }));
 });
