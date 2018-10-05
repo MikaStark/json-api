@@ -1,39 +1,50 @@
 import { Resource } from './resource';
 import { DocumentResources } from './document-resources';
 import { DocumentResource } from './document-resource';
-import { JsonApiModule as JsonApi } from '../json-api.module';
 import { Parameters } from '../interfaces/parameters';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { DocumentError } from './document-error';
+import { JsonApiParametersService } from '../json-api-parameters.service';
+import { HttpClient } from '@angular/common/http';
+import { JsonApiFactoryService } from '../json-api-factory.service';
+import { JsonDocumentResources } from '../interfaces/json-document-resources';
+import { JsonDocumentResource } from '../interfaces/json-document-resource';
 
 export class Service<R extends Resource = Resource> {
-  private get url(): string {
-    return `${JsonApi.url}/${this.type}`;
+  type: string;
+  resource = Resource;
+
+  get url(): string {
+    return `${this.apiUrl}/${this.type}`;
   }
 
-  public type: string;
-  public resource = Resource;
+  constructor(
+    private apiUrl: string,
+    private http: HttpClient,
+    private params: JsonApiParametersService,
+    private factory: JsonApiFactoryService
+  ) { }
 
   create(): R {
-    return new this.resource(null, this.type) as R;
+    return new this.resource(null, this.type, this.apiUrl, this.http, this.params, this.factory) as R;
   }
 
   all(params?: Parameters): Observable<DocumentResources<R>> {
-    return JsonApi.http.get<DocumentResources<R>>(this.url, {
-      params: JsonApi.params.httpParams(params)
+    return this.http.get<JsonDocumentResources>(this.url, {
+      params: this.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApi.builder.documentResources(document) as DocumentResources<R>)
+      map(document => this.factory.documentWithManyResources(document) as DocumentResources<R>)
     );
   }
 
   find(id: string, params?: Parameters): Observable<DocumentResource<R>> {
-    return JsonApi.http.get<DocumentResource<R>>(`${this.url}/${id}`, {
-      params: JsonApi.params.httpParams(params)
+    return this.http.get<JsonDocumentResource>(`${this.url}/${id}`, {
+      params: this.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApi.builder.documentResource(document) as DocumentResource<R>)
+      map(document => this.factory.documentWithOneResource(document) as DocumentResource<R>)
     );
   }
 }

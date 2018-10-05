@@ -1,6 +1,6 @@
-import { Meta } from '../interfaces';
+import { Meta, JsonIdentifier } from '../interfaces';
 
-export class Identifier {
+export class Identifier implements JsonIdentifier {
   meta: Meta;
 
   constructor(

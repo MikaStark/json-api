@@ -1,6 +1,16 @@
-import { Component, Injectable } from '@angular/core';
-import { Resource, DocumentCollection, Service, DocumentResource } from 'json-api';
-import { mergeMap } from 'rxjs/operators';
+import { Component, Injectable, OnInit } from '@angular/core';
+import { Resource, Service, Relationships, Relationship, JsonApiRegisterService, JsonApiFactoryService } from 'json-api';
+import { mergeMap, tap } from 'rxjs/operators';
+
+class Country extends Resource {
+  attributes: {
+    name?: {[locale: string]: string}
+  };
+  relationships: {
+    currencies: Relationships<Currency>,
+    taxes: Relationships<Tax>
+  };
+}
 
 class Currency extends Resource {
   attributes: {
@@ -8,36 +18,80 @@ class Currency extends Resource {
   };
 
   relationships: {
-    country: DocumentResource<Country>
+    country: Relationship<Country>
   };
 }
 
-class Country extends Resource {
+class Tax extends Resource {
+  attributes: {
+    label: {[locale: string]: string};
+    validity: string;
+  };
   relationships: {
-    currencies: DocumentCollection<Currency>
+    taxescategory: Relationship<TaxesCategory>;
+    country: Relationship<Country>;
+  };
+}
+
+class TaxesCategory extends Resource {
+  attributes: {
+    label: {[locale: string]: string}
+  };
+}
+
+class Firm extends Resource {
+  relationships: {
+    parentfirm: Relationship<Firm>
   };
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
+  useFactory: (factory: JsonApiFactoryService) => factory.service('countries', Country),
+  deps: [JsonApiFactoryService]
 })
-class CountriesService extends Service<Country> {
-  type = 'countries';
-  resource = Country;
-}
+class CountriesService extends Service<Country> { }
+
+@Injectable({
+  providedIn: 'root',
+  useFactory: (factory: JsonApiFactoryService) => factory.service('firms', Firm),
+  deps: [JsonApiFactoryService]
+})
+class FirmsServices extends Service<Firm> { }
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'api-project';
-  constructor(countries: CountriesService) {
-    countries.all({ include: ['currencies', 'taxes', 'taxes.taxescategory'] }).subscribe(console.log);
-    countries.find('FR', { include: ['currencies', 'taxes', 'taxes.taxescategory'] }).subscribe(console.log);
-    countries.find('FR', { include: ['currencies'] }).pipe(
-      mergeMap(doc => doc.data.getRelationships('taxes', { include: ['taxescategory'] }))
+
+  constructor(
+    private countries: CountriesService,
+    private firms: FirmsServices,
+    register: JsonApiRegisterService
+  ) {
+    register.setMany({
+      firms: Firm,
+      countries: Country,
+      taxes: Tax,
+      taxes_categories: TaxesCategory,
+      currencies: Currency
+    });
+  }
+
+  ngOnInit() {
+    this.countries.all({
+      include: ['currencies', 'taxes', 'taxes.taxescategory']
+    }).subscribe(console.log);
+    this.countries.find('FR', {
+      include: ['currencies', 'taxes', 'taxes.taxescategory']
+    }).subscribe(console.log);
+    this.countries.find('FR', {
+      include: ['currencies'] }).pipe(
+      tap(console.log),
+      mergeMap(doc => doc.data.getRelationships('currencies'))
     ).subscribe(console.log);
   }
 }

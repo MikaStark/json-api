@@ -1,15 +1,13 @@
 import { TestBed, inject, async } from '@angular/core/testing';
-import { JsonApiModule } from '../json-api.module';
 import { JSON_API_VERSION } from '../json-api-version';
 import { JSON_API_URL } from '../json-api-url';
 import { Service } from './service';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { fakeDocumentResources } from '../mocks/document-resources';
-import { fakeDocumentResource } from '../mocks/document-resource';
 import { Resource } from './resource';
-import { DocumentResource } from './document-resource';
-import { DocumentResources } from './document-resources';
 import { JsonApiParametersService } from '../json-api-parameters.service';
+import { JsonApiRegisterService } from '../json-api-register.service';
+import { HttpClient } from '@angular/common/http';
+import { JsonApiFactoryService } from '../json-api-factory.service';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
@@ -17,11 +15,21 @@ const type = 'fake';
 
 describe('Service', () => {
   let service: Service;
-  const parametersService = jasmine.createSpyObj('JsonApiParametersService', ['httpParams']);
+  const parametersService = jasmine.createSpyObj('JsonApiParametersService', [
+    'httpParams'
+  ]);
+  const registerService = jasmine.createSpyObj('JsonApiRegisterService', [
+    'get',
+    'set'
+  ]);
+  const factoryService = jasmine.createSpyObj('JsonApiFactoryService', [
+    'documentWithManyResources',
+    'documentWithOneResource',
+  ]);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [JsonApiModule, HttpClientTestingModule],
+      imports: [HttpClientTestingModule],
       providers: [
         {
           provide: JSON_API_VERSION,
@@ -34,13 +42,22 @@ describe('Service', () => {
         {
           provide: JsonApiParametersService,
           useValue: parametersService
+        },
+        {
+          provide: JsonApiRegisterService,
+          useValue: registerService
+        },
+        {
+          provide: JsonApiFactoryService,
+          useValue: factoryService
         }
       ]
     });
   });
 
   beforeEach(() => {
-    service = new Service();
+    const http = TestBed.get(HttpClient);
+    service = new Service(url, http, parametersService, factoryService);
     service.type = type;
     service.resource = class Foo extends Resource {};
   });
@@ -61,9 +78,9 @@ describe('Service', () => {
     HttpTestingController
   ], (backend: HttpTestingController) => {
     service.all({})
-      .subscribe(document => {
+      .subscribe(() => {
         expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(document).toEqual(jasmine.any(DocumentResources));
+        expect(factoryService.documentWithManyResources).toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}`);
@@ -73,26 +90,27 @@ describe('Service', () => {
     expect(request.request.body).toBeFalsy();
     expect(request.request.responseType).toEqual('json');
 
-    request.flush(fakeDocumentResources);
+    request.flush({});
   })));
 
   it('should find one resource', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    service.find(fakeDocumentResource.data.id, {})
-      .subscribe(document => {
+    const id = '1';
+    service.find(id, {})
+      .subscribe(() => {
         expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(document).toEqual(jasmine.any(DocumentResource));
+        expect(factoryService.documentWithOneResource).toHaveBeenCalled();
       });
 
-    const request = backend.expectOne(`${url}/${type}/${fakeDocumentResource.data.id}`);
+    const request = backend.expectOne(`${url}/${type}/${id}`);
 
     expect(request.cancelled).toBeFalsy();
     expect(request.request.method).toBe('GET');
     expect(request.request.body).toBeFalsy();
     expect(request.request.responseType).toEqual('json');
 
-    request.flush(fakeDocumentResource);
+    request.flush({});
   })));
 
   afterEach(inject([HttpTestingController], (httpMock: HttpTestingController) => {

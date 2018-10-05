@@ -1,12 +1,11 @@
-import { Resource } from './resource';
-import { Meta } from '../interfaces/meta';
-import { Links } from '../interfaces/links';
+import { JsonDocument, Links, Meta } from '../interfaces';
+import { Resource } from '.';
 import { Identifier } from './identifier';
 
-export class Document {
-  public included: Resource[];
-  public links: Links;
-  public jsonapi: {version: string; meta: Meta};
+export class Document implements JsonDocument {
+  included: Resource[];
+  links: Links;
+  jsonapi: {version: string; meta: Meta};
 
   constructor(
     public data: Resource|Resource[]|Identifier|Identifier[],

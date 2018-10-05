@@ -1,20 +1,26 @@
-import { Injectable } from '@angular/core';
-
-import { DocumentResource } from './classes/document-resource';
-import { DocumentResources } from './classes/document-resources';
-import { Document } from './classes/document';
+import { Injectable, Inject } from '@angular/core';
 import { Identifier } from './classes/identifier';
-import { DocumentIdentifier } from './classes/document-identifier';
-import { DocumentIdentifiers } from './classes/document-identifiers';
-import { Resource } from './classes/resource';
-import { JsonApiRegisterService } from './json-api-register.service';
+import { Resource, DocumentIdentifier, DocumentIdentifiers, DocumentResource, DocumentResources, Document, Service } from './classes';
+import { JSON_API_URL } from './json-api-url';
+import { JsonApiRegisterService } from '../public_api';
+import { JsonApiParametersService } from './json-api-parameters.service';
+import { HttpClient } from '@angular/common/http';
+import { JsonDocumentIdentifier } from './interfaces/json-document-identifier';
+import { JsonDocumentIdentifiers } from './interfaces/json-document-identifiers';
+import { JsonDocumentResource } from './interfaces/json-document-resource';
+import { JsonDocumentResources } from './interfaces/json-document-resources';
+import { JsonResource } from './interfaces/json-resource';
 
 @Injectable({
   providedIn: 'root'
 })
-export class JsonApiBuilderService {
-
-  constructor(private register: JsonApiRegisterService) { }
+export class JsonApiFactoryService {
+  constructor(
+    @Inject(JSON_API_URL) private url: string,
+    private register: JsonApiRegisterService,
+    private http: HttpClient,
+    private params: JsonApiParametersService,
+  ) { }
 
   private findResource(identifier: Identifier, document: Document): Resource {
     const data = document.data as Resource | Resource[];
@@ -22,7 +28,7 @@ export class JsonApiBuilderService {
       .concat(data || [])
       .find(included => included.id === identifier.id && included.type === identifier.type);
     if (!relationship) {
-      relationship = new Resource(identifier.id, identifier.type);
+      relationship = this.resource(identifier.id, identifier.type);
       relationship.meta = identifier.meta;
     }
     return relationship;
@@ -31,21 +37,21 @@ export class JsonApiBuilderService {
   private populate(resource: Resource, document: Document): void {
     for (const name in resource.relationships) {
       if (Array.isArray(resource.relationships[name].data)) {
-        const relationships = resource.relationships[name].data as Resource[];
+        const relationships = resource.relationships[name].data as Identifier[];
         resource.relationships[name].data = relationships.map(data => this.findResource(data, document));
       } else {
-        const relationship = resource.relationships[name].data as Resource;
+        const relationship = resource.relationships[name].data as Identifier;
         resource.relationships[name].data = this.findResource(relationship, document);
       }
     }
   }
 
-  private buildIncludedResources(included: Resource[]): Resource[] {
+  private buildIncludedResources(included: JsonResource[]): Resource[] {
     return included.map(resource => {
       const includedData = this.resource(resource.id, resource.type);
       includedData.attributes = resource.attributes;
       if (resource.relationships) {
-        includedData.relationships = resource.relationships;
+        includedData.relationships = resource.relationships as any;
       }
       includedData.links = resource.links;
       includedData.meta = resource.meta;
@@ -53,12 +59,7 @@ export class JsonApiBuilderService {
     });
   }
 
-  resource(id: string, type: string): Resource {
-    const resourceType = this.register.get(type);
-    return new resourceType(id, type);
-  }
-
-  documentIdentifier(document: DocumentIdentifier): DocumentIdentifier {
+  documentWithOneIdentifier(document: JsonDocumentIdentifier): DocumentIdentifier {
     const data = new Identifier(document.data.id, document.data.type);
     data.meta = document.data.meta;
     const documentIdentifier = new DocumentIdentifier(data, document.meta);
@@ -67,7 +68,7 @@ export class JsonApiBuilderService {
     return documentIdentifier;
   }
 
-  documentIdentifiers(document: DocumentIdentifiers): DocumentIdentifiers {
+  documentWithManyIdentifiers(document: JsonDocumentIdentifiers): DocumentIdentifiers {
     const documentIdentifiers = new DocumentIdentifiers(
       document.data.map(resource => {
         const data = new Identifier(resource.id, resource.type);
@@ -81,7 +82,7 @@ export class JsonApiBuilderService {
     return documentIdentifiers;
   }
 
-  documentResource(document: DocumentResource): DocumentResource {
+  documentWithOneResource(document: JsonDocumentResource): DocumentResource {
     const data = this.resource(document.data.id, document.data.type);
     data.attributes = document.data.attributes;
     data.links = document.data.links;
@@ -90,7 +91,7 @@ export class JsonApiBuilderService {
     const documentResource = new DocumentResource(data, document.meta);
 
     if (document.data.relationships) {
-      data.relationships = document.data.relationships;
+      data.relationships = document.data.relationships as any;
     }
 
     if (document.included) {
@@ -106,7 +107,7 @@ export class JsonApiBuilderService {
     return documentResource;
   }
 
-  documentResources(document: DocumentResources): DocumentResources {
+  documentWithManyResources(document: JsonDocumentResources): DocumentResources {
     const documentResources = new DocumentResources(null, document.meta);
     documentResources.links = document.links;
     documentResources.jsonapi = document.jsonapi;
@@ -117,7 +118,7 @@ export class JsonApiBuilderService {
       data.links = resource.links;
       data.meta = resource.meta;
       if (resource.relationships) {
-        data.relationships = resource.relationships;
+        data.relationships = resource.relationships as any;
       }
       return data;
     });
@@ -131,5 +132,18 @@ export class JsonApiBuilderService {
     }
 
     return documentResources;
+  }
+
+  resource(id: string, type: string): Resource {
+    const resourceType = this.register.get(type);
+    return new resourceType(id, type, this.url, this.http, this.params, this);
+  }
+
+
+  service<R extends Resource = Resource>(type: string, resource: typeof Resource): Service<R> {
+    const service = new Service<R>(this.url, this.http, this.params, this);
+    service.type = type;
+    service.resource = resource;
+    return service;
   }
 }
