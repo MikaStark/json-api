@@ -17,6 +17,7 @@ import { JsonDocumentIdentifier } from '../interfaces/json-document-identifier';
 import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
 import { JsonDocumentResources } from '../interfaces/json-document-resources';
 import { JsonResource, JsonIdentifier } from '../interfaces';
+import { JsonApiService } from '../json-api.service';
 
 export class Resource extends Identifier implements JsonResource {
 
@@ -41,11 +42,11 @@ export class Resource extends Identifier implements JsonResource {
     if (this.id) {
       body.data.id = this.id;
     }
-    return this.http.post<JsonDocumentResource>(this.url, body, {
-      params: this.params.httpParams(params)
+    return JsonApiService.http.post<JsonDocumentResource>(this.url, body, {
+      params: JsonApiService.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => this.factory.documentWithOneResource(document)),
+      map(document => JsonApiService.factory.documentWithOneResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -61,11 +62,11 @@ export class Resource extends Identifier implements JsonResource {
         attributes: this.attributes
       }
     };
-    return this.http.patch<JsonDocumentResource>(`${this.url}/${this.id}`, body, {
-      params: this.params.httpParams(params)
+    return JsonApiService.http.patch<JsonDocumentResource>(`${this.url}/${this.id}`, body, {
+      params: JsonApiService.params.httpParams(params)
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => this.factory.documentWithOneResource(document)),
+      map(document => JsonApiService.factory.documentWithOneResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -74,35 +75,35 @@ export class Resource extends Identifier implements JsonResource {
   }
 
   delete(): Observable<void> {
-    return this.http.delete<void>(`${this.url}/${this.id}`).pipe(
+    return JsonApiService.http.delete<void>(`${this.url}/${this.id}`).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       tap(() => this._deleted = true)
     );
   }
 
   getRelationship(name: string): Observable<DocumentIdentifier> {
-    return this.http.get<JsonDocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`).pipe(
+    return JsonApiService.http.get<JsonDocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => this.factory.documentWithOneIdentifier(document))
+      map(document => JsonApiService.factory.documentWithOneIdentifier(document))
     );
   }
 
   getRelationships(name: string): Observable<DocumentIdentifiers> {
-    return this.http.get<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`).pipe(
+    return JsonApiService.http.get<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => this.factory.documentWithManyIdentifiers(document))
+      map(document => JsonApiService.factory.documentWithManyIdentifiers(document))
     );
   }
 
   updateRelationship(name: string, identifier: JsonIdentifier): Observable<DocumentResource> {
-    return this.http.patch<JsonDocumentResource>(`${this.url}/${this.id}/relationships/${name}`, {
+    return JsonApiService.http.patch<JsonDocumentResource>(`${this.url}/${this.id}/relationships/${name}`, {
       data: {
         id: identifier.id,
         type: identifier.type
       }
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => this.factory.documentWithOneResource(document)),
+      map(document => JsonApiService.factory.documentWithOneResource(document)),
       tap(document => this.relationships[name] = {
         data: document.data,
         links: document.links
@@ -111,14 +112,14 @@ export class Resource extends Identifier implements JsonResource {
   }
 
   updateRelationships(name: string, identifiers: JsonIdentifier[]): Observable<DocumentResources> {
-    return this.http.patch<JsonDocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
+    return JsonApiService.http.patch<JsonDocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
       data: identifiers.map(identifier => ({
         id: identifier.id,
         type: identifier.type
       }))
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => this.factory.documentWithManyResources(document)),
+      map(document => JsonApiService.factory.documentWithManyResources(document)),
       tap(document => this.relationships[name] = {
         data: document.data,
         links: document.links
@@ -131,13 +132,13 @@ export class Resource extends Identifier implements JsonResource {
     relationships: JsonIdentifier[],
     params?: Parameters
   ): Observable<DocumentResources> {
-    return this.http.post<JsonDocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
+    return JsonApiService.http.post<JsonDocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
       data: relationships
     }, {
-        params: this.params.httpParams(params)
+        params: JsonApiService.params.httpParams(params)
       }).pipe(
         catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-        map(document => this.factory.documentWithManyResources(document)),
+        map(document => JsonApiService.factory.documentWithManyResources(document)),
         tap(document => {
           if (!this.relationships[name]) {
             this.relationships[name] = {
@@ -158,7 +159,7 @@ export class Resource extends Identifier implements JsonResource {
     const body = {
       data: relationships
     };
-    return this.http.request<void>('delete', `${this.url}/${this.id}/relationships/${name}`, { body }).pipe(
+    return JsonApiService.http.request<void>('delete', `${this.url}/${this.id}/relationships/${name}`, { body }).pipe(
       filter(() => !!this.relationships[name]),
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       tap(() => {

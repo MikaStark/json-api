@@ -9,7 +9,7 @@ export class JsonApiParametersService {
   private listCollection(params: HttpParams, name: string, values: {[name: string]: string[]}): HttpParams {
     let newParams = params;
     for (const key in values) {
-      if (values[key]) {
+      if (values[key] && values[key].length > 0) {
         newParams = newParams.set(`${name}[${key}]`, values[key].join(','));
       }
     }
@@ -51,7 +51,7 @@ export class JsonApiParametersService {
       params = this.collection(params, 'page', value.page);
     }
     if (value.filter) {
-      params = this.collection(params, 'filter', value.filter);
+      params = this.listCollection(params, 'filter', value.filter);
     }
     return params;
   }

@@ -1,11 +1,13 @@
 import { NgModule, Optional, SkipSelf } from '@angular/core';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { JsonApiInterceptorService } from './json-api-interceptor.service';
+import { JsonApiService } from './json-api.service';
 
 @NgModule({
   imports: [HttpClientModule],
   exports: [HttpClientModule],
   providers: [
+    JsonApiService,
     {
       provide: HTTP_INTERCEPTORS,
       useClass: JsonApiInterceptorService,
@@ -16,6 +18,7 @@ import { JsonApiInterceptorService } from './json-api-interceptor.service';
 export class JsonApiModule {
   constructor(
     @Optional() @SkipSelf() parentModule: JsonApiModule,
+    _: JsonApiService
   ) {
     if (parentModule) {
       throw new Error('JsonApiModule is already loaded. Import it in the AppModule only');

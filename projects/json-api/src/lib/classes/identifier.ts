@@ -1,21 +1,15 @@
 import { Meta, JsonIdentifier } from '../interfaces';
-import { HttpClient } from '@angular/common/http';
-import { JsonApiParametersService } from '../json-api-parameters.service';
-import { JsonApiFactoryService } from '../json-api-factory.service';
+import { JsonApiService } from '../json-api.service';
 
 export class Identifier implements JsonIdentifier {
   meta: Meta;
 
   constructor(
     public id: string = '',
-    public type: string = '',
-    protected apiUrl: string,
-    protected http: HttpClient,
-    protected params: JsonApiParametersService,
-    protected factory: JsonApiFactoryService
+    public type: string = ''
   ) { }
 
   protected get url(): string {
-    return `${this.apiUrl}/${this.type}`;
+    return `${JsonApiService.url}/${this.type}`;
   }
 }

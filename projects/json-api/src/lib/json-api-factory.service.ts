@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@angular/core';
 import { Identifier } from './classes/identifier';
-import { Resource, DocumentIdentifier, DocumentIdentifiers, DocumentResource, DocumentResources, Document, Service } from './classes';
+import { Resource, DocumentIdentifier, DocumentIdentifiers, DocumentResource, DocumentResources, Document } from './classes';
 import { JSON_API_URL } from './json-api-url';
 import { JsonApiRegisterService } from '../public_api';
 import { JsonApiParametersService } from './json-api-parameters.service';
@@ -136,10 +136,10 @@ export class JsonApiFactoryService {
 
   resource(id: string, type: string): Resource {
     const resourceType = this.register.get(type);
-    return new resourceType(id, type, this.url, this.http, this.params, this);
+    return new resourceType(id, type);
   }
 
   identifier(id: string, type: string): Identifier {
-    return new Identifier(id, type, this.url, this.http, this.params, this);
+    return new Identifier(id, type);
   }
 }
