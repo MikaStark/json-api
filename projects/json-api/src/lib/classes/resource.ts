@@ -17,8 +17,6 @@ import { JsonDocumentIdentifier } from '../interfaces/json-document-identifier';
 import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
 import { JsonDocumentResources } from '../interfaces/json-document-resources';
 import { JsonResource, JsonIdentifier } from '../interfaces';
-import { HttpClient } from '@angular/common/http';
-import { JsonApiParametersService } from '../json-api-parameters.service';
 
 export class Resource extends Identifier implements JsonResource {
 
@@ -31,14 +29,6 @@ export class Resource extends Identifier implements JsonResource {
 
   get deleted(): boolean {
     return this._deleted;
-  }
-
-  private get http(): HttpClient {
-    return this.factory.http;
-  }
-
-  private get params(): JsonApiParametersService {
-    return this.factory.params;
   }
 
   save(params?: Parameters): Observable<DocumentResource> {

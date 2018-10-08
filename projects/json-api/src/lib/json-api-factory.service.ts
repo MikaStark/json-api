@@ -60,11 +60,7 @@ export class JsonApiFactoryService {
   }
 
   documentWithOneIdentifier(document: JsonDocumentIdentifier): DocumentIdentifier {
-    const data = new Identifier(
-      document.data.id,
-      document.data.type,
-      this
-    );
+    const data = this.identifier(document.data.id, document.data.type);
     data.meta = document.data.meta;
     const documentIdentifier = new DocumentIdentifier(data, document.meta);
     documentIdentifier.links = document.links;
@@ -75,11 +71,7 @@ export class JsonApiFactoryService {
   documentWithManyIdentifiers(document: JsonDocumentIdentifiers): DocumentIdentifiers {
     const documentIdentifiers = new DocumentIdentifiers(
       document.data.map(resource => {
-        const data = new Identifier(
-          resource.id,
-          resource.type,
-          this
-        );
+        const data = this.identifier(resource.id, resource.type);
         data.meta = resource.meta;
         return data;
       }),
@@ -144,6 +136,10 @@ export class JsonApiFactoryService {
 
   resource(id: string, type: string): Resource {
     const resourceType = this.register.get(type);
-    return new resourceType(id, type, this);
+    return new resourceType(id, type, this.url, this.http, this.params, this);
+  }
+
+  identifier(id: string, type: string): Identifier {
+    return new Identifier(id, type, this.url, this.http, this.params, this);
   }
 }

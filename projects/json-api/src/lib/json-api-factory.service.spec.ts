@@ -9,6 +9,7 @@ import { JsonDocumentIdentifier } from './interfaces/json-document-identifier';
 import { JsonDocumentIdentifiers } from './interfaces/json-document-identifiers';
 import { JsonDocumentResource } from './interfaces/json-document-resource';
 import { JsonDocumentResources } from './interfaces/json-document-resources';
+import { Identifier } from './classes/identifier';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
@@ -193,7 +194,22 @@ describe('JsonApiFactoryService', () => {
     expect(resource.type).toEqual(type);
   });
 
+  it('should generate a identifier', () => {
+    const service: JsonApiFactoryService = TestBed.get(JsonApiFactoryService);
+    const id = '1';
 
+    registerService.get.and.callFake(() => Resource);
+
+    const identifier = service.identifier(id, type);
+
+    expect(registerService.get).not.toHaveBeenCalled();
+    expect(registerService.set).not.toHaveBeenCalled();
+
+    expect(identifier).toBeTruthy();
+    expect(identifier).toEqual(jasmine.any(Identifier));
+    expect(identifier.id).toEqual(id);
+    expect(identifier.type).toEqual(type);
+  });
 
   it('should generate a document with an identifier', () => {
     const service: JsonApiFactoryService = TestBed.get(JsonApiFactoryService);

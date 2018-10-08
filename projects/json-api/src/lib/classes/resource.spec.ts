@@ -33,6 +33,11 @@ describe('Resource', () => {
     'documentWithManyIdentifiers',
     'documentWithOneIdentifier',
   ]);
+  const serviceService = jasmine.createSpyObj('Service', [
+    'all',
+    'find',
+    'create',
+  ]);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -63,11 +68,9 @@ describe('Resource', () => {
   });
 
   beforeEach(() => {
+    const http = TestBed.get(HttpClient);
     httpMock = TestBed.get(HttpTestingController);
-    factoryService.http = TestBed.get(HttpClient);
-    factoryService.params = parametersService;
-    factoryService.url = url;
-    resource = new Resource(null, type, factoryService);
+    resource = new Resource(null, type, url, http, parametersService, factoryService);
 
     factoryService.documentWithOneResource.calls.reset();
     factoryService.documentWithManyResources.calls.reset();
