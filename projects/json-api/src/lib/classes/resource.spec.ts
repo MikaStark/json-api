@@ -17,6 +17,7 @@ const relationship = 'fake';
 
 describe('Resource', () => {
   let resource: Resource;
+  let httpMock: HttpTestingController;
   const builder = jasmine.createSpyObj('JsonApiModule', {
     builder: {
       get: jasmine.createSpy('get'),
@@ -62,14 +63,21 @@ describe('Resource', () => {
   });
 
   beforeEach(() => {
-    const http = TestBed.get(HttpClient);
-    resource = new Resource(null, type, url, http, parametersService, factoryService);
+    httpMock = TestBed.get(HttpTestingController);
+    factoryService.http = TestBed.get(HttpClient);
+    factoryService.params = parametersService;
+    factoryService.url = url;
+    resource = new Resource(null, type, factoryService);
 
     factoryService.documentWithOneResource.calls.reset();
     factoryService.documentWithManyResources.calls.reset();
     factoryService.documentWithOneIdentifier.calls.reset();
     factoryService.documentWithManyIdentifiers.calls.reset();
     parametersService.httpParams.calls.reset();
+  });
+
+  afterEach(() => {
+    httpMock.verify();
   });
 
   it('should save and update', async(inject([
@@ -198,7 +206,9 @@ describe('Resource', () => {
     resource.getRelationship(relationship)
       .subscribe(document => {
         expect(document).toEqual(jasmine.any(DocumentIdentifier));
-        expect(document.data).toBe(documentWithIdentifier.data);
+        expect(document.data.id).toBe(documentWithIdentifier.data.id);
+        expect(document.data.type).toBe(documentWithIdentifier.data.type);
+        expect(document.data.meta).toBe(documentWithIdentifier.data.meta);
         expect(document.meta).toBe(documentWithIdentifier.meta);
         expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
@@ -240,7 +250,11 @@ describe('Resource', () => {
     resource.getRelationships(relationship)
       .subscribe(document => {
         expect(document).toEqual(jasmine.any(DocumentIdentifiers));
-        expect(document.data).toBe(documentWithIdentifiers.data);
+        document.data.map((data, index) => {
+          expect(data.id).toBe(documentWithIdentifiers.data[index].id);
+          expect(data.type).toBe(documentWithIdentifiers.data[index].type);
+          expect(data.meta).toBe(documentWithIdentifiers.data[index].meta);
+        });
         expect(document.meta).toBe(documentWithIdentifiers.meta);
         expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();

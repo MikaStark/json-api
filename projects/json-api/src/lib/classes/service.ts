@@ -27,7 +27,7 @@ export class Service<R extends Resource = Resource> {
   ) { }
 
   create(): R {
-    return new this.resource(null, this.type, this.apiUrl, this.http, this.params, this.factory) as R;
+    return new this.resource(null, this.type, this.factory) as R;
   }
 
   all(params?: Parameters): Observable<DocumentResources<R>> {

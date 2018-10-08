@@ -16,10 +16,10 @@ import { JsonResource } from './interfaces/json-resource';
 })
 export class JsonApiFactoryService {
   constructor(
-    @Inject(JSON_API_URL) private url: string,
-    private register: JsonApiRegisterService,
-    private http: HttpClient,
-    private params: JsonApiParametersService,
+    @Inject(JSON_API_URL) public readonly url: string,
+    public readonly register: JsonApiRegisterService,
+    public readonly http: HttpClient,
+    public readonly params: JsonApiParametersService,
   ) { }
 
   private findResource(identifier: Identifier, document: Document): Resource {
@@ -60,7 +60,11 @@ export class JsonApiFactoryService {
   }
 
   documentWithOneIdentifier(document: JsonDocumentIdentifier): DocumentIdentifier {
-    const data = new Identifier(document.data.id, document.data.type);
+    const data = new Identifier(
+      document.data.id,
+      document.data.type,
+      this
+    );
     data.meta = document.data.meta;
     const documentIdentifier = new DocumentIdentifier(data, document.meta);
     documentIdentifier.links = document.links;
@@ -71,7 +75,11 @@ export class JsonApiFactoryService {
   documentWithManyIdentifiers(document: JsonDocumentIdentifiers): DocumentIdentifiers {
     const documentIdentifiers = new DocumentIdentifiers(
       document.data.map(resource => {
-        const data = new Identifier(resource.id, resource.type);
+        const data = new Identifier(
+          resource.id,
+          resource.type,
+          this
+        );
         data.meta = resource.meta;
         return data;
       }),
@@ -136,14 +144,6 @@ export class JsonApiFactoryService {
 
   resource(id: string, type: string): Resource {
     const resourceType = this.register.get(type);
-    return new resourceType(id, type, this.url, this.http, this.params, this);
-  }
-
-
-  service<R extends Resource = Resource>(type: string, resource: typeof Resource): Service<R> {
-    const service = new Service<R>(this.url, this.http, this.params, this);
-    service.type = type;
-    service.resource = resource;
-    return service;
+    return new resourceType(id, type, this);
   }
 }
