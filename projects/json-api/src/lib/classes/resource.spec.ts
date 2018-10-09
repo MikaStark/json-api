@@ -317,10 +317,10 @@ describe('Resource', () => {
   it('should update to-one relationship', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const documentWithOneResource: JsonDocumentResource = {
-      data: { id: '1', type, attributes: { }, relationships: { }, meta: { }, links: { } },
+    const newRelationshipId = '2';
+    const documentWithOneIdentifier: JsonDocumentIdentifier = {
+      data: { id: newRelationshipId, type },
       meta: { },
-      included: [],
       links: { },
       jsonapi: {
         version,
@@ -328,28 +328,19 @@ describe('Resource', () => {
       }
     };
 
-    factoryService.documentWithOneResource.and.callFake(document => {
-      const documentResource = new DocumentResource(document.data, document.meta);
-      documentResource.links = document.links;
-      return documentResource;
-    });
-
     resource.id = id;
+    resource.relationships[relationship] = {
+      data: new Resource(newRelationshipId, type),
+      links: {}
+    };
 
-    resource.updateRelationship(relationship, {id, type, meta: {}})
+    resource.updateRelationship(relationship)
       .subscribe(() => {
-        const newRelationship = resource.relationships[relationship];
-        const newRelationshipData = resource.relationships[relationship].data as Resource;
-        expect(newRelationship).toBeTruthy();
-        expect(newRelationshipData.id).toEqual(documentWithOneResource.data.id);
-        expect(newRelationshipData.type).toEqual(documentWithOneResource.data.type);
-        expect(newRelationshipData.attributes).toEqual(documentWithOneResource.data.attributes);
-        expect(newRelationship.links).toEqual(documentWithOneResource.links);
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).toHaveBeenCalled();
+        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
         expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
+        expect(factoryService.documentWithOneIdentifier).toHaveBeenCalled();
         expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
       });
 
@@ -357,22 +348,25 @@ describe('Resource', () => {
 
     expect(request.cancelled).toBeFalsy();
     expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toBeTruthy();
     expect(request.request.responseType).toEqual('json');
+    expect(request.request.body).toBeTruthy();
 
-    request.flush(documentWithOneResource);
+    expect(request.request.body.data).toBeTruthy();
+    expect(request.request.body.data.id).toEqual(newRelationshipId);
+    expect(request.request.body.data.type).toEqual(type);
+
+    request.flush(documentWithOneIdentifier);
   })));
 
   it('should update to-many relationships', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const documentWithManyResources: JsonDocumentResources = {
+    const newRelationshipId = '2';
+    const documentWithManyIdentifiers: JsonDocumentIdentifiers = {
       data: [
-        { id: '1', type, attributes: { }, relationships: { }, meta: { }, links: { } },
-        { id: '2', type, attributes: { }, relationships: { }, meta: { }, links: { } }
+        { id: newRelationshipId, type, meta: { } }
       ],
       meta: { },
-      included: [],
       links: { },
       jsonapi: {
         version,
@@ -380,56 +374,47 @@ describe('Resource', () => {
       }
     };
 
-    factoryService.documentWithManyResources.and.callFake(document => {
-      const documentResources = new DocumentResources(document.data, document.meta);
-      documentResources.links = document.links;
-      return documentResources;
-    });
-
     resource.id = id;
+    resource.relationships[relationship] = {
+      data: [
+        new Resource(newRelationshipId, type)
+      ],
+      links: {}
+    };
 
-    resource.updateRelationships(relationship, [
-      {id: '1', type, meta: {}},
-      {id: '2', type, meta: {}}
-    ])
+    resource.updateRelationships(relationship)
       .subscribe(() => {
-        const newRelationships = resource.relationships[relationship];
-        const newRelationshipsData = resource.relationships[relationship].data as Resource[];
-        expect(newRelationships).toBeTruthy();
-        newRelationshipsData.map((data, index) => {
-          expect(data.id).toEqual(documentWithManyResources.data[index].id);
-          expect(data.type).toEqual(documentWithManyResources.data[index].type);
-          expect(data.attributes).toEqual(documentWithManyResources.data[index].attributes);
-        });
-        expect(newRelationships.links).toEqual(documentWithManyResources.links);
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).toHaveBeenCalled();
+        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
         expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(factoryService.documentWithManyIdentifiers).toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
 
     expect(request.cancelled).toBeFalsy();
     expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toBeTruthy();
     expect(request.request.responseType).toEqual('json');
+    expect(request.request.body).toBeTruthy();
 
-    request.flush(documentWithManyResources);
+    expect(request.request.body.data).toBeTruthy();
+    expect(request.request.body.data[0].id).toEqual(newRelationshipId);
+    expect(request.request.body.data[0].type).toEqual(type);
+
+    request.flush(documentWithManyIdentifiers);
   })));
 
   it('should save relationships', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const documentWithManyResources: JsonDocumentResources = {
+    const newRelationshipId = '2';
+    const documentWithManyIdentifiers: JsonDocumentIdentifiers = {
       data: [
-        { id: '1', type, attributes: { }, relationships: { }, meta: { }, links: { } },
-        { id: '2', type, attributes: { }, relationships: { }, meta: { }, links: { } }
+        { id: newRelationshipId, type, meta: { } }
       ],
       meta: { },
-      included: [],
       links: { },
       jsonapi: {
         version,
@@ -437,41 +422,22 @@ describe('Resource', () => {
       }
     };
 
-    factoryService.documentWithManyResources.and.callFake(document => {
-      const documentResources = new DocumentResources(document.data, document.meta);
-      documentResources.links = document.links;
-      return documentResources;
-    });
-
     resource.id = id;
     resource.relationships[relationship] = {
       data: [
-        { id: '3', type, attributes: { } } as any
+        new Resource(newRelationshipId, type)
       ],
-      links: { }
+      links: {}
     };
 
-    resource.saveRelationships(relationship, [
-      {id: '1', type, meta: {}},
-      {id: '2', type, meta: {}}
-    ])
+    resource.saveRelationships(relationship)
       .subscribe(() => {
-        const newRelationships = resource.relationships[relationship];
-        const newRelationshipsData = resource.relationships[relationship].data as Resource[];
-        const allRelationships = newRelationshipsData.concat(documentWithManyResources.data as any);
-        expect(newRelationships).toBeTruthy();
-        newRelationshipsData.map((data, index) => {
-          expect(data.id).toEqual(allRelationships[index].id);
-          expect(data.type).toEqual(allRelationships[index].type);
-          expect(data.attributes).toEqual(allRelationships[index].attributes);
-        });
-        expect(newRelationships.links).toEqual(documentWithManyResources.links);
         expect(resource.deleted).toBeFalsy();
-        expect(parametersService.httpParams).toHaveBeenCalled();
+        expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).toHaveBeenCalled();
+        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
         expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(factoryService.documentWithManyIdentifiers).toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
@@ -481,7 +447,11 @@ describe('Resource', () => {
     expect(request.request.body).toBeTruthy();
     expect(request.request.responseType).toEqual('json');
 
-    request.flush(documentWithManyResources);
+    expect(request.request.body.data).toBeTruthy();
+    expect(request.request.body.data[0].id).toEqual(newRelationshipId);
+    expect(request.request.body.data[0].type).toEqual(type);
+
+    request.flush(documentWithManyIdentifiers);
   })));
 
   it('should delete relationships', async(inject([

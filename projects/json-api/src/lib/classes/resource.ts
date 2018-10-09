@@ -15,7 +15,6 @@ import { Relationship } from '../interfaces/relationship';
 import { JsonDocumentResource } from '../interfaces/json-document-resource';
 import { JsonDocumentIdentifier } from '../interfaces/json-document-identifier';
 import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
-import { JsonDocumentResources } from '../interfaces/json-document-resources';
 import { JsonResource, JsonIdentifier } from '../interfaces';
 import { JsonApiModule } from '../json-api.module';
 import { JsonRelationshipsIdentifiers } from '../interfaces/json-relationships-identifiers';
@@ -122,68 +121,47 @@ export class Resource extends Identifier implements JsonResource {
     );
   }
 
-  updateRelationship(name: string, identifier: JsonIdentifier): Observable<DocumentResource> {
+  updateRelationship(name: string): Observable<DocumentIdentifier> {
     const body = {
       data: null
     };
-    if (identifier) {
+    const relationship = this.relationships[name].data as Resource;
+    if (relationship) {
       body.data = {
-        id: identifier.id,
-        type: identifier.type
+        id: relationship.id,
+        type: relationship.type
       };
     }
-    return JsonApiModule.http.patch<JsonDocumentResource>(`${this.url}/${this.id}/relationships/${name}`, body).pipe(
+    return JsonApiModule.http.patch<JsonDocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`, body).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithOneResource(document)),
-      tap(document => this.relationships[name] = {
-        data: document.data,
-        links: document.links
-      })
+      map(document => JsonApiModule.factory.documentWithOneIdentifier(document))
     );
   }
 
-  updateRelationships(name: string, identifiers: JsonIdentifier[]): Observable<DocumentResources> {
-    return JsonApiModule.http.patch<JsonDocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
-      data: identifiers.map(identifier => ({
-        id: identifier.id,
-        type: identifier.type
+  updateRelationships(name: string): Observable<DocumentIdentifiers> {
+    const relationships = this.relationships[name].data as Resource[];
+    return JsonApiModule.http.patch<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`, {
+      data: relationships.map(relationship => ({
+        id: relationship.id,
+        type: relationship.type
       }))
     }).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithManyResources(document)),
-      tap(document => this.relationships[name] = {
-        data: document.data,
-        links: document.links
-      })
+      map(document => JsonApiModule.factory.documentWithManyIdentifiers(document))
     );
   }
 
-  saveRelationships(
-    name: string,
-    relationships: JsonIdentifier[],
-    params?: Parameters
-  ): Observable<DocumentResources> {
-    return JsonApiModule.http.post<JsonDocumentResources>(`${this.url}/${this.id}/relationships/${name}`, {
-      data: relationships
-    }, {
-        params: JsonApiModule.params.httpParams(params)
-      }).pipe(
-        catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-        map(document => JsonApiModule.factory.documentWithManyResources(document)),
-        tap(document => {
-          if (!this.relationships[name]) {
-            this.relationships[name] = {
-              data: document.data,
-              links: document.links
-            };
-          } else {
-            const relationshipsData = this.relationships[name].data as Resource[];
-            this.relationships[name].data = relationshipsData
-              .filter(resource => !document.data.map(data => data.id).includes(resource.id))
-              .concat(document.data);
-          }
-        })
-      );
+  saveRelationships(name: string): Observable<DocumentIdentifiers> {
+    const relationships = this.relationships[name].data as Resource[];
+    return JsonApiModule.http.post<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`, {
+      data: relationships.map(relationship => ({
+        id: relationship.id,
+        type: relationship.type
+      }))
+    }).pipe(
+      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
+      map(document => JsonApiModule.factory.documentWithManyIdentifiers(document))
+    );
   }
 
   deleteRelationships(name: string, relationships: JsonIdentifier[]): Observable<void> {
