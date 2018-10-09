@@ -1,7 +1,7 @@
 import { Resource } from './resource';
 import { TestBed, async, inject } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { JSON_API_VERSION, JSON_API_URL, JsonApiModule, DocumentIdentifier } from '../../public_api';
+import { JSON_API_VERSION, JSON_API_URL, DocumentIdentifier } from '../../public_api';
 import { JsonApiParametersService } from '../json-api-parameters.service';
 import { HttpClient } from '@angular/common/http';
 import { DocumentResource } from './document-resource';
@@ -9,7 +9,7 @@ import { DocumentResources } from './document-resources';
 import { DocumentIdentifiers } from './document-identifiers';
 import { JsonDocumentResource, JsonDocumentIdentifier, JsonDocumentIdentifiers, JsonDocumentResources } from '../interfaces';
 import { JsonApiFactoryService } from '../json-api-factory.service';
-import { JsonApiService } from '../json-api.service';
+import { JsonApiModule } from '../json-api.module';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
@@ -69,10 +69,10 @@ describe('Resource', () => {
     httpMock = TestBed.get(HttpTestingController);
     resource = new Resource(null, type);
 
-    JsonApiService.url = url;
-    JsonApiService.http = http;
-    JsonApiService.params = parametersService;
-    JsonApiService.factory = factoryService;
+    JsonApiModule.url = url;
+    JsonApiModule.http = http;
+    JsonApiModule.params = parametersService;
+    JsonApiModule.factory = factoryService;
 
     factoryService.documentWithOneResource.calls.reset();
     factoryService.documentWithManyResources.calls.reset();

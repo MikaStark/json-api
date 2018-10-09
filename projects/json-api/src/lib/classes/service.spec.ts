@@ -8,7 +8,7 @@ import { JsonApiParametersService } from '../json-api-parameters.service';
 import { JsonApiRegisterService } from '../json-api-register.service';
 import { HttpClient } from '@angular/common/http';
 import { JsonApiFactoryService } from '../json-api-factory.service';
-import { JsonApiService } from '../json-api.service';
+import { JsonApiModule } from '../json-api.module';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
@@ -59,10 +59,10 @@ describe('Service', () => {
   beforeEach(() => {
     const http = TestBed.get(HttpClient);
 
-    JsonApiService.url = url;
-    JsonApiService.http = http;
-    JsonApiService.params = parametersService;
-    JsonApiService.factory = factoryService;
+    JsonApiModule.url = url;
+    JsonApiModule.http = http;
+    JsonApiModule.params = parametersService;
+    JsonApiModule.factory = factoryService;
 
     service = new Service();
     service.type = type;

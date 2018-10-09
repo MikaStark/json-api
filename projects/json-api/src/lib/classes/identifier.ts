@@ -1,5 +1,5 @@
 import { Meta, JsonIdentifier } from '../interfaces';
-import { JsonApiService } from '../json-api.service';
+import { JsonApiModule } from '../json-api.module';
 
 export class Identifier implements JsonIdentifier {
   meta: Meta;
@@ -10,6 +10,6 @@ export class Identifier implements JsonIdentifier {
   ) { }
 
   protected get url(): string {
-    return `${JsonApiService.url}/${this.type}`;
+    return `${JsonApiModule.url}/${this.type}`;
   }
 }
