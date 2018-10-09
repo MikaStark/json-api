@@ -38,27 +38,20 @@ export class Resource extends Identifier implements JsonResource {
     for (const name in this.relationships) {
       if (Array.isArray(this.relationships[name].data)) {
         const relationships = this.relationships[name].data as Resource[];
-        const identifiers = relationships
-          .filter(relationship => relationship.id && relationship.type)
-          .map(relationship => ({
+        relationshipsIdentifiers[name] = {
+          data: relationships.map(relationship => ({
             type: relationship.type,
             id: relationship.id,
-          }));
-        if (identifiers.length > 0) {
-          relationshipsIdentifiers[name] = {
-            data: identifiers
-          };
-        }
+          }))
+        };
       } else {
         const relationship = this.relationships[name].data as Resource;
-        if (relationship.id && relationship.type) {
-          relationshipsIdentifiers[name] = {
-            data: {
-              type: relationship.type,
-              id: relationship.id
-            }
-          };
-        }
+        relationshipsIdentifiers[name] = {
+          data: relationship ? {
+            type: relationship.type,
+            id: relationship.id
+          } : null
+        };
       }
     }
     return relationshipsIdentifiers;
