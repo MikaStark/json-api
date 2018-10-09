@@ -18,6 +18,7 @@ import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers
 import { JsonDocumentResources } from '../interfaces/json-document-resources';
 import { JsonResource, JsonIdentifier } from '../interfaces';
 import { JsonApiService } from '../json-api.service';
+import { JsonRelationshipsIdentifiers } from '../interfaces/json-relationships-identifiers';
 
 export class Resource extends Identifier implements JsonResource {
 
@@ -32,11 +33,40 @@ export class Resource extends Identifier implements JsonResource {
     return this._deleted;
   }
 
+  get relationshipsIdentifiers(): JsonRelationshipsIdentifiers {
+    const relationshipsIdentifiers: JsonRelationshipsIdentifiers = {};
+    for (const name in this.relationships) {
+      if (Array.isArray(this.relationships[name].data)) {
+        const relationships = this.relationships[name].data as Resource[];
+        relationshipsIdentifiers[name] = {
+          data: relationships
+            .filter(relationship => relationship.id && relationship.type)
+            .map(relationship => ({
+              type: relationship.type,
+              id: relationship.id,
+            }))
+        };
+      } else {
+        const relationship = this.relationships[name].data as Resource;
+        if (relationship.id && relationship.type) {
+          relationshipsIdentifiers[name] = {
+            data: {
+              type: relationship.type,
+              id: relationship.id
+            }
+          };
+        }
+      }
+    }
+    return relationshipsIdentifiers;
+  }
+
   save(params?: Parameters): Observable<DocumentResource> {
     const body: any = {
       data: {
         type: this.type,
-        attributes: this.attributes
+        attributes: this.attributes,
+        relationships: this.relationshipsIdentifiers
       }
     };
     if (this.id) {
@@ -59,7 +89,8 @@ export class Resource extends Identifier implements JsonResource {
       data: {
         type: this.type,
         id: this.id,
-        attributes: this.attributes
+        attributes: this.attributes,
+        relationships: this.relationshipsIdentifiers
       }
     };
     return JsonApiService.http.patch<JsonDocumentResource>(`${this.url}/${this.id}`, body, {

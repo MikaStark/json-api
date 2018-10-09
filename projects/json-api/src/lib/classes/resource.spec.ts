@@ -35,11 +35,6 @@ describe('Resource', () => {
     'documentWithManyIdentifiers',
     'documentWithOneIdentifier',
   ]);
-  const serviceService = jasmine.createSpyObj('Service', [
-    'all',
-    'find',
-    'create',
-  ]);
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -90,7 +85,7 @@ describe('Resource', () => {
     httpMock.verify();
   });
 
-  it('should save and update', async(inject([
+  it('should save', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
     const documentWithOneResource: JsonDocumentResource = {
@@ -102,6 +97,20 @@ describe('Resource', () => {
         version,
         meta: { }
       }
+    };
+    resource.attributes = {
+      foo: true
+    };
+    resource.relationships.foo = {
+      data: new Resource('2', 'foo'),
+      links: {}
+    };
+    resource.relationships.foos = {
+      data: [
+        new Resource('3', 'foo'),
+        new Resource('4', 'foo')
+      ],
+      links: {}
     };
 
     factoryService.documentWithOneResource.and.callFake(document => new DocumentResource(document.data, document.meta));
@@ -122,8 +131,12 @@ describe('Resource', () => {
 
     expect(request.cancelled).toBeFalsy();
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toBeTruthy();
     expect(request.request.responseType).toEqual('json');
+
+    expect(request.request.body).toBeTruthy();
+    expect(request.request.body.data).toBeTruthy();
+    expect(request.request.body.data.attributes).toEqual(resource.attributes);
+    expect(request.request.body.data.relationships).toEqual(resource.relationshipsIdentifiers);
 
     request.flush(documentWithOneResource);
   })));
@@ -145,6 +158,20 @@ describe('Resource', () => {
     factoryService.documentWithOneResource.and.callFake(document => new DocumentResource(document.data, document.meta));
 
     resource.id = id;
+    resource.attributes = {
+      foo: true
+    };
+    resource.relationships.foo = {
+      data: new Resource('2', 'foo'),
+      links: {}
+    };
+    resource.relationships.foos = {
+      data: [
+        new Resource('3', 'foo'),
+        new Resource('4', 'foo')
+      ],
+      links: {}
+    };
 
     resource.update({})
       .subscribe(document => {
@@ -162,8 +189,12 @@ describe('Resource', () => {
 
     expect(request.cancelled).toBeFalsy();
     expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toBeTruthy();
     expect(request.request.responseType).toEqual('json');
+    expect(request.request.body).toBeTruthy();
+
+    expect(request.request.body.data).toBeTruthy();
+    expect(request.request.body.data.attributes).toEqual(resource.attributes);
+    expect(request.request.body.data.relationships).toEqual(resource.relationshipsIdentifiers);
 
     request.flush(documentWithOneResource);
   })));
