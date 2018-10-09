@@ -24,10 +24,10 @@ export class Resource extends Identifier implements JsonResource {
 
   private _deleted = false;
 
-  attributes: Attributes;
+  attributes: Attributes = {};
   relationships: { [name: string]: Relationships | Relationship } = {};
-  meta: Meta;
-  links: Links;
+  meta: Meta = {};
+  links: Links = {};
 
   get deleted(): boolean {
     return this._deleted;
@@ -38,14 +38,17 @@ export class Resource extends Identifier implements JsonResource {
     for (const name in this.relationships) {
       if (Array.isArray(this.relationships[name].data)) {
         const relationships = this.relationships[name].data as Resource[];
-        relationshipsIdentifiers[name] = {
-          data: relationships
-            .filter(relationship => relationship.id && relationship.type)
-            .map(relationship => ({
-              type: relationship.type,
-              id: relationship.id,
-            }))
-        };
+        const identifiers = relationships
+          .filter(relationship => relationship.id && relationship.type)
+          .map(relationship => ({
+            type: relationship.type,
+            id: relationship.id,
+          }));
+        if (identifiers.length > 0) {
+          relationshipsIdentifiers[name] = {
+            data: identifiers
+          };
+        }
       } else {
         const relationship = this.relationships[name].data as Resource;
         if (relationship.id && relationship.type) {
