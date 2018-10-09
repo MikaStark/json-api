@@ -123,12 +123,16 @@ export class Resource extends Identifier implements JsonResource {
   }
 
   updateRelationship(name: string, identifier: JsonIdentifier): Observable<DocumentResource> {
-    return JsonApiModule.http.patch<JsonDocumentResource>(`${this.url}/${this.id}/relationships/${name}`, {
-      data: {
+    const body = {
+      data: null
+    };
+    if (identifier) {
+      body.data = {
         id: identifier.id,
         type: identifier.type
-      }
-    }).pipe(
+      };
+    }
+    return JsonApiModule.http.patch<JsonDocumentResource>(`${this.url}/${this.id}/relationships/${name}`, body).pipe(
       catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       map(document => JsonApiModule.factory.documentWithOneResource(document)),
       tap(document => this.relationships[name] = {
