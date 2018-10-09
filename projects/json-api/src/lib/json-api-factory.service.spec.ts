@@ -200,7 +200,7 @@ describe('JsonApiFactoryService', () => {
 
     registerService.get.and.callFake(() => Resource);
 
-    const identifier = service.identifier(id, type);
+    const identifier = new Identifier(id, type);
 
     expect(registerService.get).not.toHaveBeenCalled();
     expect(registerService.set).not.toHaveBeenCalled();

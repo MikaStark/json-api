@@ -1,10 +1,7 @@
-import { Injectable, Inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { Identifier } from './classes/identifier';
 import { Resource, DocumentIdentifier, DocumentIdentifiers, DocumentResource, DocumentResources, Document } from './classes';
-import { JSON_API_URL } from './json-api-url';
 import { JsonApiRegisterService } from '../public_api';
-import { JsonApiParametersService } from './json-api-parameters.service';
-import { HttpClient } from '@angular/common/http';
 import { JsonDocumentIdentifier } from './interfaces/json-document-identifier';
 import { JsonDocumentIdentifiers } from './interfaces/json-document-identifiers';
 import { JsonDocumentResource } from './interfaces/json-document-resource';
@@ -15,12 +12,7 @@ import { JsonResource } from './interfaces/json-resource';
   providedIn: 'root'
 })
 export class JsonApiFactoryService {
-  constructor(
-    @Inject(JSON_API_URL) public readonly url: string,
-    public readonly register: JsonApiRegisterService,
-    public readonly http: HttpClient,
-    public readonly params: JsonApiParametersService,
-  ) { }
+  constructor(private register: JsonApiRegisterService) { }
 
   private findResource(identifier: Identifier, document: Document): Resource {
     const data = document.data as Resource | Resource[];
@@ -60,7 +52,7 @@ export class JsonApiFactoryService {
   }
 
   documentWithOneIdentifier(document: JsonDocumentIdentifier): DocumentIdentifier {
-    const data = this.identifier(document.data.id, document.data.type);
+    const data = new Identifier(document.data.id, document.data.type);
     data.meta = document.data.meta;
     const documentIdentifier = new DocumentIdentifier(data, document.meta);
     documentIdentifier.links = document.links;
@@ -71,7 +63,7 @@ export class JsonApiFactoryService {
   documentWithManyIdentifiers(document: JsonDocumentIdentifiers): DocumentIdentifiers {
     const documentIdentifiers = new DocumentIdentifiers(
       document.data.map(resource => {
-        const data = this.identifier(resource.id, resource.type);
+        const data = new Identifier(resource.id, resource.type);
         data.meta = resource.meta;
         return data;
       }),
@@ -137,9 +129,5 @@ export class JsonApiFactoryService {
   resource(id: string, type: string): Resource {
     const resourceType = this.register.get(type);
     return new resourceType(id, type);
-  }
-
-  identifier(id: string, type: string): Identifier {
-    return new Identifier(id, type);
   }
 }
