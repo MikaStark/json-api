@@ -1,5 +1,6 @@
 import { Document } from './document';
 import { Meta } from '../interfaces/meta';
+import { Error } from '../interfaces/error';
 
 export class DocumentError extends Document {
   constructor(
