@@ -1,15 +1,18 @@
 import { Resource } from './resource';
 import { TestBed, async, inject } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { JSON_API_VERSION, JSON_API_URL, DocumentIdentifier } from '../../public_api';
 import { JsonApiParametersService } from '../json-api-parameters.service';
 import { HttpClient } from '@angular/common/http';
 import { DocumentResource } from './document-resource';
-import { DocumentResources } from './document-resources';
 import { DocumentIdentifiers } from './document-identifiers';
-import { JsonDocumentResource, JsonDocumentIdentifier, JsonDocumentIdentifiers, JsonDocumentResources } from '../interfaces';
 import { JsonApiFactoryService } from '../json-api-factory.service';
 import { JsonApiModule } from '../json-api.module';
+import { JSON_API_VERSION } from '../json-api-version';
+import { JSON_API_URL } from '../json-api-url';
+import { JsonDocumentResource } from '../interfaces/json-document-resource';
+import { JsonDocumentIdentifier } from '../interfaces/json-document-identifier';
+import { DocumentIdentifier } from './document-identifier';
+import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
