@@ -31,7 +31,7 @@ export class JsonApiFactoryService {
       if (Array.isArray(resource.relationships[name].data)) {
         const relationships = resource.relationships[name].data as Identifier[];
         resource.relationships[name].data = relationships.map(data => this.findResource(data, document));
-      } else {
+      } else if (resource.relationships[name].data) {
         const relationship = resource.relationships[name].data as Identifier;
         resource.relationships[name].data = this.findResource(relationship, document);
       }
