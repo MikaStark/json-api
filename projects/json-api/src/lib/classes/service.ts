@@ -2,9 +2,8 @@ import { Resource } from './resource';
 import { DocumentResources } from './document-resources';
 import { DocumentResource } from './document-resource';
 import { Parameters } from '../interfaces/parameters';
-import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
-import { DocumentError } from './document-error';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { JsonDocumentResources } from '../interfaces/json-document-resources';
 import { JsonDocumentResource } from '../interfaces/json-document-resource';
 import { JsonApiModule } from '../json-api.module';
@@ -25,8 +24,7 @@ export class Service<R extends Resource = Resource> {
     return JsonApiModule.http.get<JsonDocumentResources>(this.url, {
       params: JsonApiModule.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithManyResources(document) as DocumentResources<R>)
+      map(document => new DocumentResources<R>(document))
     );
   }
 
@@ -34,8 +32,7 @@ export class Service<R extends Resource = Resource> {
     return JsonApiModule.http.get<JsonDocumentResource>(`${this.url}/${id}`, {
       params: JsonApiModule.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithOneResource(document) as DocumentResource<R>)
+      map(document => new DocumentResource<R>(document))
     );
   }
 }

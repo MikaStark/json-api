@@ -3,9 +3,7 @@ import { TestBed, async, inject } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { JsonApiParametersService } from '../json-api-parameters.service';
 import { HttpClient } from '@angular/common/http';
-import { DocumentResource } from './document-resource';
 import { DocumentIdentifiers } from './document-identifiers';
-import { JsonApiFactoryService } from '../json-api-factory.service';
 import { JsonApiModule } from '../json-api.module';
 import { JSON_API_VERSION } from '../json-api-version';
 import { JSON_API_URL } from '../json-api-url';
@@ -13,6 +11,8 @@ import { JsonDocumentResource } from '../interfaces/json-document-resource';
 import { JsonDocumentIdentifier } from '../interfaces/json-document-identifier';
 import { DocumentIdentifier } from './document-identifier';
 import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
+import { JsonApiRegisterService } from '../json-api-register.service';
+import { DocumentResource } from './document-resource';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
@@ -32,12 +32,9 @@ describe('Resource', () => {
   const parametersService = jasmine.createSpyObj('JsonApiParametersService', [
     'httpParams'
   ]);
-  const factoryService = jasmine.createSpyObj('JsonApiFactoryService', [
-    'documentWithManyResources',
-    'documentWithOneResource',
-    'documentWithManyIdentifiers',
-    'documentWithOneIdentifier',
-  ]);
+  const registersService = jasmine.createSpyObj('JsonApiRegisterService', {
+    get: Resource
+  });
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -56,8 +53,8 @@ describe('Resource', () => {
           useValue: builder
         },
         {
-          provide: JsonApiFactoryService,
-          useValue: factoryService
+          provide: JsonApiRegisterService,
+          useValue: registersService
         },
         {
           provide: JsonApiParametersService,
@@ -75,12 +72,9 @@ describe('Resource', () => {
     JsonApiModule.url = url;
     JsonApiModule.http = http;
     JsonApiModule.params = parametersService;
-    JsonApiModule.factory = factoryService;
+    JsonApiModule.register = registersService;
 
-    factoryService.documentWithOneResource.calls.reset();
-    factoryService.documentWithManyResources.calls.reset();
-    factoryService.documentWithOneIdentifier.calls.reset();
-    factoryService.documentWithManyIdentifiers.calls.reset();
+    registersService.get.calls.reset();
     parametersService.httpParams.calls.reset();
   });
 
@@ -116,18 +110,13 @@ describe('Resource', () => {
       links: {}
     };
 
-    factoryService.documentWithOneResource.and.callFake(document => new DocumentResource(document.data, document.meta));
-
     resource.save({})
       .subscribe(document => {
         expect(resource.id).toEqual(documentWithOneResource.data.id);
         expect(resource.attributes).toEqual(documentWithOneResource.data.attributes);
         expect(document.data.deleted).toBeFalsy();
         expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(registersService.get).toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}`);
@@ -158,8 +147,6 @@ describe('Resource', () => {
       }
     };
 
-    factoryService.documentWithOneResource.and.callFake(document => new DocumentResource(document.data, document.meta));
-
     resource.id = id;
     resource.attributes = {
       foo: true
@@ -182,10 +169,7 @@ describe('Resource', () => {
         expect(resource.attributes).toEqual(documentWithOneResource.data.attributes);
         expect(document.data.deleted).toBeFalsy();
         expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(registersService.get).toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}`);
@@ -205,18 +189,13 @@ describe('Resource', () => {
   it('should delete', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    factoryService.documentWithOneResource.and.callFake(document => new DocumentResource(document.data, document.meta));
-
     resource.id = id;
 
     resource.delete()
       .subscribe(() => {
         expect(resource.deleted).toBeTruthy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}`);
@@ -243,8 +222,6 @@ describe('Resource', () => {
       }
     };
 
-    factoryService.documentWithOneIdentifier.and.callFake(document => new DocumentIdentifier(document.data, document.meta));
-
     resource.id = id;
 
     resource.getRelationship(relationship)
@@ -252,13 +229,9 @@ describe('Resource', () => {
         expect(document).toEqual(jasmine.any(DocumentIdentifier));
         expect(document.data.id).toBe(documentWithIdentifier.data.id);
         expect(document.data.type).toBe(documentWithIdentifier.data.type);
-        expect(document.data.meta).toBe(documentWithIdentifier.data.meta);
         expect(document.meta).toBe(documentWithIdentifier.meta);
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
@@ -287,8 +260,6 @@ describe('Resource', () => {
       }
     };
 
-    factoryService.documentWithManyIdentifiers.and.callFake(document => new DocumentIdentifiers(document.data, document.meta));
-
     resource.id = id;
 
     resource.getRelationships(relationship)
@@ -297,14 +268,10 @@ describe('Resource', () => {
         document.data.map((data, index) => {
           expect(data.id).toBe(documentWithIdentifiers.data[index].id);
           expect(data.type).toBe(documentWithIdentifiers.data[index].type);
-          expect(data.meta).toBe(documentWithIdentifiers.data[index].meta);
         });
         expect(document.meta).toBe(documentWithIdentifiers.meta);
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
@@ -341,10 +308,7 @@ describe('Resource', () => {
       .subscribe(() => {
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
@@ -389,10 +353,7 @@ describe('Resource', () => {
       .subscribe(() => {
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
@@ -437,10 +398,7 @@ describe('Resource', () => {
       .subscribe(() => {
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
@@ -492,10 +450,7 @@ describe('Resource', () => {
         });
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).not.toHaveBeenCalled();
-        expect(factoryService.documentWithOneIdentifier).not.toHaveBeenCalled();
-        expect(factoryService.documentWithManyIdentifiers).not.toHaveBeenCalled();
+        expect(registersService.get).not.toHaveBeenCalled();
       });
 
     const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);

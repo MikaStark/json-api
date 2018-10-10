@@ -3,7 +3,7 @@ import { HttpClientModule, HTTP_INTERCEPTORS, HttpClient } from '@angular/common
 import { JsonApiInterceptorService } from './json-api-interceptor.service';
 import { JSON_API_URL } from './json-api-url';
 import { JsonApiParametersService } from './json-api-parameters.service';
-import { JsonApiFactoryService } from './json-api-factory.service';
+import { JsonApiRegisterService } from './json-api-register.service';
 
 @NgModule({
   imports: [HttpClientModule],
@@ -20,14 +20,14 @@ export class JsonApiModule {
   static url: string = null;
   static http: HttpClient = null;
   static params: JsonApiParametersService = null;
-  static factory: JsonApiFactoryService = null;
+  static register: JsonApiRegisterService = null;
 
   constructor(
     @Optional() @SkipSelf() parentModule: JsonApiModule,
     @Inject(JSON_API_URL) url: string,
     http: HttpClient,
     params: JsonApiParametersService,
-    factory: JsonApiFactoryService
+    register: JsonApiRegisterService
   ) {
     if (parentModule) {
       throw new Error('JsonApiModule is already loaded. Import it in the AppModule only');
@@ -35,6 +35,6 @@ export class JsonApiModule {
     JsonApiModule.url = url;
     JsonApiModule.http = http;
     JsonApiModule.params = params;
-    JsonApiModule.factory = factory;
+    JsonApiModule.register = register;
   }
 }

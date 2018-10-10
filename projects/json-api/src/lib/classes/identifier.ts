@@ -1,12 +1,12 @@
-import { Meta, JsonIdentifier } from '../interfaces';
+import { Meta } from '../interfaces/meta';
+import { JsonIdentifier } from '../interfaces/json-identifier';
 import { JsonApiModule } from '../json-api.module';
 
 export class Identifier implements JsonIdentifier {
-  meta: Meta = {};
-
   constructor(
-    public id: string = '',
-    public type: string = ''
+    public id: string,
+    public type: string,
+    public meta: Meta = {}
   ) { }
 
   protected get url(): string {

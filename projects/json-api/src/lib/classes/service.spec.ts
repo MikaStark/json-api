@@ -7,8 +7,11 @@ import { Resource } from './resource';
 import { JsonApiParametersService } from '../json-api-parameters.service';
 import { JsonApiRegisterService } from '../json-api-register.service';
 import { HttpClient } from '@angular/common/http';
-import { JsonApiFactoryService } from '../json-api-factory.service';
 import { JsonApiModule } from '../json-api.module';
+import { JsonDocumentResource } from '../interfaces/json-document-resource';
+import { JsonDocumentResources } from '../interfaces/json-document-resources';
+import { DocumentResource } from './document-resource';
+import { DocumentResources } from './document-resources';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
@@ -19,14 +22,9 @@ describe('Service', () => {
   const parametersService = jasmine.createSpyObj('JsonApiParametersService', [
     'httpParams'
   ]);
-  const registerService = jasmine.createSpyObj('JsonApiRegisterService', [
-    'get',
-    'set'
-  ]);
-  const factoryService = jasmine.createSpyObj('JsonApiFactoryService', [
-    'documentWithManyResources',
-    'documentWithOneResource',
-  ]);
+  const registerService = jasmine.createSpyObj('JsonApiRegisterService', {
+    get: Resource
+  });
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -47,10 +45,6 @@ describe('Service', () => {
         {
           provide: JsonApiRegisterService,
           useValue: registerService
-        },
-        {
-          provide: JsonApiFactoryService,
-          useValue: factoryService
         }
       ]
     });
@@ -62,7 +56,7 @@ describe('Service', () => {
     JsonApiModule.url = url;
     JsonApiModule.http = http;
     JsonApiModule.params = parametersService;
-    JsonApiModule.factory = factoryService;
+    JsonApiModule.register = registerService;
 
     service = new Service();
     service.type = type;
@@ -84,10 +78,61 @@ describe('Service', () => {
   it('should find all resources', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
+    const documentWithmanyResources: JsonDocumentResources = {
+      data: [
+        { id: '1', type, attributes: { }, relationships: {
+          foo: {
+            data: { id: '3', type },
+            links: { }
+          },
+          foos: {
+            data: [
+              { id: '2', type },
+              { id: '3', type }
+            ],
+            links: { }
+          }
+        }, meta: { }, links: { } },
+        { id: '2', type, attributes: { }, relationships: {
+          foo: {
+            data: { id: '1', type },
+            links: { }
+          },
+          foos: {
+            data: [
+              { id: '3', type },
+            ],
+            links: { }
+          }
+        }, meta: { }, links: { } }
+      ],
+      meta: { },
+      included: [
+        { id: '3', type, attributes: { }, relationships: {
+          foo: {
+            data: { id: '1', type },
+            links: { }
+          },
+          foos: {
+            data: [
+              { id: '1', type },
+              { id: '2', type }
+            ],
+            links: { }
+          }
+        }, meta: { }, links: { } }
+      ],
+      links: { },
+      jsonapi: {
+        version,
+        meta: { }
+      }
+    };
+
     service.all({})
-      .subscribe(() => {
+      .subscribe(document => {
         expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(factoryService.documentWithManyResources).toHaveBeenCalled();
+        expect(document).toEqual(jasmine.any(DocumentResources));
       });
 
     const request = backend.expectOne(`${url}/${type}`);
@@ -97,27 +142,55 @@ describe('Service', () => {
     expect(request.request.body).toBeFalsy();
     expect(request.request.responseType).toEqual('json');
 
-    request.flush({});
+    request.flush(documentWithmanyResources);
   })));
 
   it('should find one resource', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const id = '1';
-    service.find(id, {})
-      .subscribe(() => {
+    const documentWithOneResource: JsonDocumentResource = {
+      data: { id: '1', type, attributes: { }, relationships: {
+        foo: {
+          data: { id: '1', type },
+          links: { }
+        },
+        foos: {
+          data: [
+            { id: '1', type },
+            { id: '2', type },
+          ],
+          links: { }
+        }
+      }, meta: { }, links: { } },
+      meta: { },
+      included: [
+        { id: '2', type, attributes: { }, relationships: {
+          foo: {
+            data: { id: '1', type },
+            links: { }
+          }
+        }, meta: { }, links: { } }
+      ],
+      links: { },
+      jsonapi: {
+        version,
+        meta: { }
+      }
+    };
+    service.find(documentWithOneResource.data.id, {})
+      .subscribe(document => {
         expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(factoryService.documentWithOneResource).toHaveBeenCalled();
+        expect(document).toEqual(jasmine.any(DocumentResource));
       });
 
-    const request = backend.expectOne(`${url}/${type}/${id}`);
+    const request = backend.expectOne(`${url}/${type}/${documentWithOneResource.data.id}`);
 
     expect(request.cancelled).toBeFalsy();
     expect(request.request.method).toBe('GET');
     expect(request.request.body).toBeFalsy();
     expect(request.request.responseType).toEqual('json');
 
-    request.flush({});
+    request.flush(documentWithOneResource);
   })));
 
   afterEach(inject([HttpTestingController], (httpMock: HttpTestingController) => {

@@ -1,13 +1,12 @@
-import { Document } from './document';
-import { Meta } from '../interfaces/meta';
 import { Identifier } from './identifier';
-import { JsonDocumentIdentifiers } from '../interfaces';
+import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
+import { DocumentOneOrManyIdentifiers } from './document-one-or-many-identifiers';
 
-export class DocumentIdentifiers extends Document implements JsonDocumentIdentifiers {
-  constructor(
-    public data: Identifier[],
-    public meta: Meta
-  ) {
-    super(data, meta);
+export class DocumentIdentifiers extends DocumentOneOrManyIdentifiers implements JsonDocumentIdentifiers {
+  data: Identifier[];
+
+  constructor(document: JsonDocumentIdentifiers) {
+    super(document);
+    this.data = document.data.map(data => new Identifier(data.id, data.type));
   }
 }

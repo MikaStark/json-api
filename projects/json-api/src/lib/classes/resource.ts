@@ -1,13 +1,11 @@
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { DocumentResource } from '../classes/document-resource';
-import { DocumentResources } from './document-resources';
-import { catchError, tap, map, filter } from 'rxjs/operators';
+import { tap, map, filter } from 'rxjs/operators';
 import { Attributes } from '../interfaces/attributes';
 import { Links } from '../interfaces/links';
 import { Parameters } from '../interfaces/parameters';
 import { Identifier } from './identifier';
 import { Meta } from '../interfaces/meta';
-import { DocumentError } from './document-error';
 import { DocumentIdentifier } from './document-identifier';
 import { DocumentIdentifiers } from './document-identifiers';
 import { Relationships } from '../interfaces/relationships';
@@ -20,13 +18,7 @@ import { JsonApiModule } from '../json-api.module';
 import { JsonRelationshipsIdentifiers } from '../interfaces/json-relationships-identifiers';
 
 export class Resource extends Identifier implements JsonResource {
-
   private _deleted = false;
-
-  attributes: Attributes = {};
-  relationships: { [name: string]: Relationships | Relationship } = {};
-  meta: Meta = {};
-  links: Links = {};
 
   get deleted(): boolean {
     return this._deleted;
@@ -56,6 +48,17 @@ export class Resource extends Identifier implements JsonResource {
     return relationshipsIdentifiers;
   }
 
+  constructor(
+    id: string,
+    type: string,
+    meta: Meta = {},
+    public attributes: Attributes = {},
+    public relationships: { [name: string]: Relationships | Relationship } = {},
+    public links: Links = {}
+  ) {
+    super(id, type, meta);
+  }
+
   save(params?: Parameters): Observable<DocumentResource> {
     const body: any = {
       data: {
@@ -70,8 +73,7 @@ export class Resource extends Identifier implements JsonResource {
     return JsonApiModule.http.post<JsonDocumentResource>(this.url, body, {
       params: JsonApiModule.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithOneResource(document)),
+      map(document => new DocumentResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -91,8 +93,7 @@ export class Resource extends Identifier implements JsonResource {
     return JsonApiModule.http.patch<JsonDocumentResource>(`${this.url}/${this.id}`, body, {
       params: JsonApiModule.params.httpParams(params)
     }).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithOneResource(document)),
+      map(document => new DocumentResource(document)),
       tap(document => {
         this.id = document.data.id;
         this.attributes = document.data.attributes;
@@ -102,22 +103,19 @@ export class Resource extends Identifier implements JsonResource {
 
   delete(): Observable<void> {
     return JsonApiModule.http.delete<void>(`${this.url}/${this.id}`).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       tap(() => this._deleted = true)
     );
   }
 
   getRelationship(name: string): Observable<DocumentIdentifier> {
     return JsonApiModule.http.get<JsonDocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithOneIdentifier(document))
+      map(document => new DocumentIdentifier(document))
     );
   }
 
   getRelationships(name: string): Observable<DocumentIdentifiers> {
     return JsonApiModule.http.get<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithManyIdentifiers(document))
+      map(document => new DocumentIdentifiers(document))
     );
   }
 
@@ -133,8 +131,7 @@ export class Resource extends Identifier implements JsonResource {
       };
     }
     return JsonApiModule.http.patch<JsonDocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`, body).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithOneIdentifier(document))
+      map(document => new DocumentIdentifier(document))
     );
   }
 
@@ -146,8 +143,7 @@ export class Resource extends Identifier implements JsonResource {
         type: relationship.type
       }))
     }).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithManyIdentifiers(document))
+      map(document => new DocumentIdentifiers(document))
     );
   }
 
@@ -159,8 +155,7 @@ export class Resource extends Identifier implements JsonResource {
         type: relationship.type
       }))
     }).pipe(
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
-      map(document => JsonApiModule.factory.documentWithManyIdentifiers(document))
+      map(document => new DocumentIdentifiers(document))
     );
   }
 
@@ -170,10 +165,9 @@ export class Resource extends Identifier implements JsonResource {
     };
     return JsonApiModule.http.request<void>('delete', `${this.url}/${this.id}/relationships/${name}`, { body }).pipe(
       filter(() => !!this.relationships[name]),
-      catchError(err => throwError(new DocumentError(err.errors, err.meta))),
       tap(() => {
         const deletedRelationshipsIds = body.data.map(relationship => relationship.id);
-        const collection = this.relationships[name] as DocumentResources;
+        const collection = this.relationships[name] as Relationships;
         this.relationships[name].data = collection.data
           .filter(relationship => !deletedRelationshipsIds.includes(relationship.id));
       })
