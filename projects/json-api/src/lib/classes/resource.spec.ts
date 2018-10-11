@@ -287,9 +287,10 @@ describe('Resource', () => {
   it('should update to-one relationship', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const newRelationshipId = '2';
+    const newRelationship = new Resource('2', type);
+    const oldRelationship = new Resource('3', type);
     const documentWithOneIdentifier: JsonDocumentIdentifier = {
-      data: { id: newRelationshipId, type },
+      data: { id: newRelationship.id, type },
       meta: { },
       links: { },
       jsonapi: {
@@ -300,12 +301,14 @@ describe('Resource', () => {
 
     resource.id = id;
     resource.relationships[relationship] = {
-      data: new Resource(newRelationshipId, type),
+      data: oldRelationship,
       links: {}
     };
 
-    resource.updateRelationship(relationship)
+    resource.updateRelationship(relationship, newRelationship)
       .subscribe(() => {
+        expect(resource.relationships[relationship].data).not.toEqual(oldRelationship);
+        expect(resource.relationships[relationship].data).toEqual(newRelationship);
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(registersService.get).not.toHaveBeenCalled();
@@ -319,8 +322,8 @@ describe('Resource', () => {
     expect(request.request.body).toBeTruthy();
 
     expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data.id).toEqual(newRelationshipId);
-    expect(request.request.body.data.type).toEqual(type);
+    expect(request.request.body.data.id).toEqual(newRelationship.id);
+    expect(request.request.body.data.type).toEqual(newRelationship.type);
 
     request.flush(documentWithOneIdentifier);
   })));
@@ -328,10 +331,15 @@ describe('Resource', () => {
   it('should update to-many relationships', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const newRelationshipId = '2';
+    const newRelationships = [
+      new Resource('2', type)
+    ];
+    const oldRelationships = [
+      new Resource('3', type)
+    ];
     const documentWithManyIdentifiers: JsonDocumentIdentifiers = {
       data: [
-        { id: newRelationshipId, type, meta: { } }
+        { id: newRelationships[0].id, type, meta: { } }
       ],
       meta: { },
       links: { },
@@ -343,14 +351,14 @@ describe('Resource', () => {
 
     resource.id = id;
     resource.relationships[relationship] = {
-      data: [
-        new Resource(newRelationshipId, type)
-      ],
+      data: oldRelationships,
       links: {}
     };
 
-    resource.updateRelationships(relationship)
+    resource.updateRelationships(relationship, newRelationships)
       .subscribe(() => {
+        expect(resource.relationships[relationship].data).not.toEqual(oldRelationships);
+        expect(resource.relationships[relationship].data).toEqual(newRelationships);
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(registersService.get).not.toHaveBeenCalled();
@@ -364,8 +372,8 @@ describe('Resource', () => {
     expect(request.request.body).toBeTruthy();
 
     expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data[0].id).toEqual(newRelationshipId);
-    expect(request.request.body.data[0].type).toEqual(type);
+    expect(request.request.body.data[0].id).toEqual(newRelationships[0].id);
+    expect(request.request.body.data[0].type).toEqual(newRelationships[0].type);
 
     request.flush(documentWithManyIdentifiers);
   })));
@@ -373,10 +381,12 @@ describe('Resource', () => {
   it('should save relationships', async(inject([
     HttpTestingController
   ], (backend: HttpTestingController) => {
-    const newRelationshipId = '2';
+    const oldRelationship = new Resource('3', type);
+    const newRelationship = new Resource('2', type);
     const documentWithManyIdentifiers: JsonDocumentIdentifiers = {
       data: [
-        { id: newRelationshipId, type, meta: { } }
+        { id: oldRelationship.id, type, meta: { } },
+        { id: newRelationship.id, type, meta: { } }
       ],
       meta: { },
       links: { },
@@ -388,14 +398,16 @@ describe('Resource', () => {
 
     resource.id = id;
     resource.relationships[relationship] = {
-      data: [
-        new Resource(newRelationshipId, type)
-      ],
+      data: [oldRelationship],
       links: {}
     };
 
-    resource.saveRelationships(relationship)
+    resource.saveRelationships(relationship, [newRelationship])
       .subscribe(() => {
+        const resources = resource.relationships[relationship].data as Resource[];
+        expect(resources.length).toEqual(2);
+        expect(resources[0]).toEqual(oldRelationship);
+        expect(resources[1]).toEqual(newRelationship);
         expect(resource.deleted).toBeFalsy();
         expect(parametersService.httpParams).not.toHaveBeenCalled();
         expect(registersService.get).not.toHaveBeenCalled();
@@ -409,8 +421,9 @@ describe('Resource', () => {
     expect(request.request.responseType).toEqual('json');
 
     expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data[0].id).toEqual(newRelationshipId);
-    expect(request.request.body.data[0].type).toEqual(type);
+    expect(request.request.body.data.length).toEqual(1);
+    expect(request.request.body.data[0].id).toEqual(newRelationship.id);
+    expect(request.request.body.data[0].type).toEqual(newRelationship.type);
 
     request.flush(documentWithManyIdentifiers);
   })));

@@ -119,11 +119,10 @@ export class Resource extends Identifier implements JsonResource {
     );
   }
 
-  updateRelationship(name: string): Observable<DocumentIdentifier> {
+  updateRelationship(name: string, relationship: Resource): Observable<DocumentIdentifier> {
     const body = {
       data: null
     };
-    const relationship = this.relationships[name].data as Resource;
     if (relationship) {
       body.data = {
         id: relationship.id,
@@ -131,31 +130,46 @@ export class Resource extends Identifier implements JsonResource {
       };
     }
     return JsonApiModule.http.patch<JsonDocumentIdentifier>(`${this.url}/${this.id}/relationships/${name}`, body).pipe(
-      map(document => new DocumentIdentifier(document))
+      map(document => new DocumentIdentifier(document)),
+      tap(document => this.relationships[name] = {
+        data: relationship,
+        links: document.links
+      })
     );
   }
 
-  updateRelationships(name: string): Observable<DocumentIdentifiers> {
-    const relationships = this.relationships[name].data as Resource[];
+  updateRelationships(name: string, relationships: Resource[]): Observable<DocumentIdentifiers> {
     return JsonApiModule.http.patch<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`, {
       data: relationships.map(relationship => ({
         id: relationship.id,
         type: relationship.type
       }))
     }).pipe(
-      map(document => new DocumentIdentifiers(document))
+      map(document => new DocumentIdentifiers(document)),
+      tap(document => this.relationships[name] = {
+        data: relationships,
+        links: document.links
+      })
     );
   }
 
-  saveRelationships(name: string): Observable<DocumentIdentifiers> {
-    const relationships = this.relationships[name].data as Resource[];
+  saveRelationships(name: string, relationships: Resource[]): Observable<DocumentIdentifiers> {
     return JsonApiModule.http.post<JsonDocumentIdentifiers>(`${this.url}/${this.id}/relationships/${name}`, {
       data: relationships.map(relationship => ({
         id: relationship.id,
         type: relationship.type
       }))
     }).pipe(
-      map(document => new DocumentIdentifiers(document))
+      map(document => new DocumentIdentifiers(document)),
+      tap(document => {
+        const oldRelationships = this.relationships[name].data as Resource[];
+        this.relationships[name] = {
+          data: oldRelationships
+            .filter(resource => oldRelationships.map(data => data.id).includes(resource.id))
+            .concat(relationships),
+          links: document.links
+        };
+      })
     );
   }
 
