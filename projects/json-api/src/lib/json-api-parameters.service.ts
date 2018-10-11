@@ -1,16 +1,25 @@
 import { Injectable } from '@angular/core';
 import { HttpParams } from '@angular/common/http';
 import { Parameters } from './interfaces/parameters';
+import { isArray } from 'util';
 
 @Injectable({
   providedIn: 'root'
 })
 export class JsonApiParametersService {
-  private listCollection(params: HttpParams, name: string, values: {[name: string]: string[]}): HttpParams {
+  private listCollection(params: HttpParams, name: string, values: {[name: string]: any|any[]}): HttpParams {
     let newParams = params;
     for (const key in values) {
-      if (values[key] && values[key].length > 0) {
-        newParams = newParams.set(`${name}[${key}]`, values[key].join(','));
+      if (isArray(values[key])) {
+        const list = values[key];
+        if (list.length > 0) {
+          newParams = newParams.set(`${name}[${key}]`, list.join(','));
+        }
+      } else {
+        const value = values[key];
+        if (value) {
+          newParams = newParams.set(`${name}[${key}]`, value.toString());
+        }
       }
     }
     return newParams;

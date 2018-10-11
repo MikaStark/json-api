@@ -4,5 +4,5 @@ export interface Parameters {
   fields?: {[name: string]: string[]};
   sort?: string[];
   page?: {[name: string]: number};
-  filter?: {[name: string]: string[]};
+  filter?: {[name: string]: any|any[]};
 }
