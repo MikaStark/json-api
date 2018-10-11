@@ -1,38 +1,71 @@
 import { Resource } from './resource';
-import { TestBed, async, inject } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController, TestRequest } from '@angular/common/http/testing';
 import { JsonApiParametersService } from '../json-api-parameters.service';
 import { HttpClient } from '@angular/common/http';
-import { DocumentIdentifiers } from './document-identifiers';
 import { JsonApiModule } from '../json-api.module';
 import { JSON_API_VERSION } from '../json-api-version';
 import { JSON_API_URL } from '../json-api-url';
 import { JsonDocumentResource } from '../interfaces/json-document-resource';
 import { JsonDocumentIdentifier } from '../interfaces/json-document-identifier';
-import { DocumentIdentifier } from './document-identifier';
 import { JsonDocumentIdentifiers } from '../interfaces/json-document-identifiers';
 import { JsonApiRegisterService } from '../json-api-register.service';
 import { DocumentResource } from './document-resource';
+import { DocumentErrors } from './document-errors';
+import { DocumentIdentifiers } from './document-identifiers';
+import { DocumentIdentifier } from './document-identifier';
 
 const version = 'test.v0';
 const url = 'http://fake.api.url';
-const id = '1';
-const type = 'fake';
-const relationship = 'fake';
+const toOneRelationshipName = 'foo';
+const toManyRelationshipName = 'foos';
+const fakeDocumentResource: JsonDocumentResource = {
+  data: {
+    id: '1', type: 'fake', attributes: {
+      foo: true,
+      fake: [1, 2, 3]
+    }, relationships: {}, meta: {}, links: {}
+  },
+  meta: {},
+  included: [],
+  links: {},
+  jsonapi: {
+    version,
+    meta: {}
+  }
+};
+
+const fakeDocumentIdentifier: JsonDocumentIdentifier = {
+  data: { id: '2', type: 'fake' },
+  meta: {},
+  links: {},
+  jsonapi: {
+    version,
+    meta: {}
+  }
+};
+
+const fakeDocumentIdentifiers: JsonDocumentIdentifiers = {
+  data: [
+    { id: '2', type: 'fake' },
+    { id: '3', type: 'fake' }
+  ],
+  meta: {},
+  links: {},
+  jsonapi: {
+    version,
+    meta: {}
+  }
+};
 
 describe('Resource', () => {
-  let resource: Resource;
   let httpMock: HttpTestingController;
-  const builder = jasmine.createSpyObj('JsonApiModule', {
-    builder: {
-      get: jasmine.createSpy('get'),
-      set: jasmine.createSpy('set')
-    }
-  });
+  let resource: Resource;
+
   const parametersService = jasmine.createSpyObj('JsonApiParametersService', [
     'httpParams'
   ]);
-  const registersService = jasmine.createSpyObj('JsonApiRegisterService', {
+  const registerService = jasmine.createSpyObj('JsonApiRegisterService', {
     get: Resource
   });
 
@@ -49,12 +82,8 @@ describe('Resource', () => {
           useValue: url
         },
         {
-          provide: JsonApiModule,
-          useValue: builder
-        },
-        {
           provide: JsonApiRegisterService,
-          useValue: registersService
+          useValue: registerService
         },
         {
           provide: JsonApiParametersService,
@@ -65,414 +94,597 @@ describe('Resource', () => {
   });
 
   beforeEach(() => {
-    const http = TestBed.get(HttpClient);
     httpMock = TestBed.get(HttpTestingController);
-    resource = new Resource(null, type);
+  });
 
+  beforeEach(() => {
     JsonApiModule.url = url;
-    JsonApiModule.http = http;
-    JsonApiModule.params = parametersService;
-    JsonApiModule.register = registersService;
+    JsonApiModule.http = TestBed.get(HttpClient);
+    JsonApiModule.params = TestBed.get(JsonApiParametersService);
+    JsonApiModule.register = TestBed.get(JsonApiRegisterService);
+  });
 
-    registersService.get.calls.reset();
+  beforeEach(() => {
+    registerService.get.calls.reset();
     parametersService.httpParams.calls.reset();
   });
 
-  afterEach(() => {
-    httpMock.verify();
+  beforeEach(() => {
+    resource = new Resource(null, 'fake', null, {
+      foo: true,
+      fake: [1, 2, 3]
+    }, {
+        [toOneRelationshipName]: {
+          data: new Resource('2', 'fake'),
+          links: null
+        },
+        [toManyRelationshipName]: {
+          data: [
+            new Resource('2', 'fake'),
+            new Resource('3', 'fake')
+          ],
+          links: null
+        }
+      }, null);
   });
 
-  it('should save', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const documentWithOneResource: JsonDocumentResource = {
-      data: { id: '1', type, attributes: { }, relationships: { }, meta: { }, links: { } },
-      meta: { },
-      included: [],
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-    resource.attributes = {
-      foo: true
-    };
-    resource.relationships.foo = {
-      data: new Resource('2', 'foo'),
-      links: {}
-    };
-    resource.relationships.foos = {
-      data: [
-        new Resource('3', 'foo'),
-        new Resource('4', 'foo')
-      ],
-      links: {}
-    };
+  afterEach(() => httpMock.verify());
 
-    resource.save({})
-      .subscribe(document => {
-        expect(resource.id).toEqual(documentWithOneResource.data.id);
-        expect(resource.attributes).toEqual(documentWithOneResource.data.attributes);
-        expect(document.data.deleted).toBeFalsy();
-        expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(registersService.get).toHaveBeenCalled();
+  describe('save', () => {
+    let request: TestRequest;
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.save().subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Save failed'));
+    });
+
+    describe('without id', () => {
+      beforeEach(() => {
+        resource.save().subscribe(res => expect(res).toEqual(jasmine.any(DocumentResource)));
+        request = httpMock.expectOne(`${url}/${resource.type}`);
+        expect(request.cancelled).toBeFalsy();
+        request.flush(fakeDocumentResource);
       });
 
-    const request = backend.expectOne(`${url}/${type}`);
-
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('POST');
-    expect(request.request.responseType).toEqual('json');
-
-    expect(request.request.body).toBeTruthy();
-    expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data.attributes).toEqual(resource.attributes);
-    expect(request.request.body.data.relationships).toEqual(resource.relationshipsIdentifiers);
-
-    request.flush(documentWithOneResource);
-  })));
-
-  it('should update', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const documentWithOneResource: JsonDocumentResource = {
-      data: { id: '1', type, attributes: { }, relationships: { }, meta: { }, links: { } },
-      meta: { },
-      included: [],
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-
-    resource.id = id;
-    resource.attributes = {
-      foo: true
-    };
-    resource.relationships.foo = {
-      data: new Resource('2', 'foo'),
-      links: {}
-    };
-    resource.relationships.foos = {
-      data: [
-        new Resource('3', 'foo'),
-        new Resource('4', 'foo')
-      ],
-      links: {}
-    };
-
-    resource.update({})
-      .subscribe(document => {
-        expect(resource.id).toEqual(documentWithOneResource.data.id);
-        expect(resource.attributes).toEqual(documentWithOneResource.data.attributes);
-        expect(document.data.deleted).toBeFalsy();
-        expect(parametersService.httpParams).toHaveBeenCalled();
-        expect(registersService.get).toHaveBeenCalled();
+      it('should send post request', () => {
+        expect(request.request.method).toBe('POST');
+        expect(request.request.responseType).toEqual('json');
       });
 
-    const request = backend.expectOne(`${url}/${type}/${id}`);
-
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('PATCH');
-    expect(request.request.responseType).toEqual('json');
-    expect(request.request.body).toBeTruthy();
-
-    expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data.attributes).toEqual(resource.attributes);
-    expect(request.request.body.data.relationships).toEqual(resource.relationshipsIdentifiers);
-
-    request.flush(documentWithOneResource);
-  })));
-
-  it('should delete', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    resource.id = id;
-
-    resource.delete()
-      .subscribe(() => {
-        expect(resource.deleted).toBeTruthy();
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
-      });
-
-    const request = backend.expectOne(`${url}/${type}/${id}`);
-
-    expect(resource.deleted).toBeFalsy();
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('DELETE');
-    expect(request.request.body).toBeFalsy();
-    expect(request.request.responseType).toEqual('json');
-
-    request.flush(null);
-  })));
-
-  it('should get to-one relationship', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const documentWithIdentifier: JsonDocumentIdentifier = {
-      data: { id: '1', type, meta: { } },
-      meta: { },
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-
-    resource.id = id;
-
-    resource.getRelationship(relationship)
-      .subscribe(document => {
-        expect(document).toEqual(jasmine.any(DocumentIdentifier));
-        expect(document.data.id).toBe(documentWithIdentifier.data.id);
-        expect(document.data.type).toBe(documentWithIdentifier.data.type);
-        expect(document.meta).toBe(documentWithIdentifier.meta);
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
-      });
-
-    const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
-
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('GET');
-    expect(request.request.body).toBeFalsy();
-    expect(request.request.responseType).toEqual('json');
-
-    request.flush(documentWithIdentifier);
-  })));
-
-  it('should get to-many relationships', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const documentWithIdentifiers: JsonDocumentIdentifiers = {
-      data: [
-        { id: '1', type, meta: { } },
-        { id: '2', type, meta: { } }
-      ],
-      meta: { },
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-
-    resource.id = id;
-
-    resource.getRelationships(relationship)
-      .subscribe(document => {
-        expect(document).toEqual(jasmine.any(DocumentIdentifiers));
-        document.data.map((data, index) => {
-          expect(data.id).toBe(documentWithIdentifiers.data[index].id);
-          expect(data.type).toBe(documentWithIdentifiers.data[index].type);
+      it('should send body with type, attributes and relationships identifiers through data object', () => {
+        expect(request.request.body).toBeTruthy();
+        expect(request.request.body.data).toEqual({
+          type: resource.type,
+          attributes: resource.attributes,
+          relationships: resource.relationshipsIdentifiers
         });
-        expect(document.meta).toBe(documentWithIdentifiers.meta);
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
       });
 
-    const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
+      it('should call httpParams method of parametersService', () => {
+        expect(parametersService.httpParams).toHaveBeenCalled();
+      });
 
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('GET');
-    expect(request.request.body).toBeFalsy();
-    expect(request.request.responseType).toEqual('json');
+      it('should call get method of registerService', () => {
+        expect(registerService.get).toHaveBeenCalled();
+      });
 
-    request.flush(documentWithIdentifiers);
-  })));
-
-  it('should update to-one relationship', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const newRelationship = new Resource('2', type);
-    const oldRelationship = new Resource('3', type);
-    const documentWithOneIdentifier: JsonDocumentIdentifier = {
-      data: { id: newRelationship.id, type },
-      meta: { },
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-
-    resource.id = id;
-    resource.relationships[relationship] = {
-      data: oldRelationship,
-      links: {}
-    };
-
-    resource.updateRelationship(relationship, newRelationship)
-      .subscribe(() => {
-        expect(resource.relationships[relationship].data).not.toEqual(oldRelationship);
-        expect(resource.relationships[relationship].data).toEqual(newRelationship);
+      it('should not set resource as deleted', () => {
         expect(resource.deleted).toBeFalsy();
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
       });
 
-    const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
+      it('should update resource id', () => {
+        expect(resource.id).toEqual(fakeDocumentResource.data.id);
+      });
 
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('PATCH');
-    expect(request.request.responseType).toEqual('json');
-    expect(request.request.body).toBeTruthy();
+      it('should update resource attributes', () => {
+        expect(resource.attributes).toEqual(fakeDocumentResource.data.attributes);
+      });
+    });
 
-    expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data.id).toEqual(newRelationship.id);
-    expect(request.request.body.data.type).toEqual(newRelationship.type);
+    describe('with id', () => {
+      beforeEach(() => {
+        resource.id = '1';
+        resource.save().subscribe(res => expect(res).toEqual(jasmine.any(DocumentResource)));
+        request = httpMock.expectOne(`${url}/${resource.type}`);
+        expect(request.cancelled).toBeFalsy();
+        request.flush(fakeDocumentResource);
+      });
 
-    request.flush(documentWithOneIdentifier);
-  })));
+      it('should send post request', () => {
+        expect(request.request.method).toBe('POST');
+        expect(request.request.responseType).toEqual('json');
+      });
 
-  it('should update to-many relationships', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
+      it('should send body with id, type, attributes and relationships identifiers through data object', () => {
+        expect(request.request.body).toBeTruthy();
+        expect(request.request.body.data).toEqual({
+          id: resource.id,
+          type: resource.type,
+          attributes: resource.attributes,
+          relationships: resource.relationshipsIdentifiers
+        });
+      });
+
+      it('should call httpParams method of parametersService', () => {
+        expect(parametersService.httpParams).toHaveBeenCalled();
+      });
+
+      it('should call get method of registerService', () => {
+        expect(registerService.get).toHaveBeenCalled();
+      });
+
+      it('should not set resource as deleted', () => {
+        expect(resource.deleted).toBeFalsy();
+      });
+
+      it('should update resource id', () => {
+        expect(resource.id).toEqual(fakeDocumentResource.data.id);
+      });
+
+      it('should update resource attributes', () => {
+        expect(resource.attributes).toEqual(fakeDocumentResource.data.attributes);
+      });
+    });
+  });
+
+  describe('update', () => {
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.update().subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Update failed'));
+    });
+
+    beforeEach(() => {
+      resource.update().subscribe(res => expect(res).toEqual(jasmine.any(DocumentResource)));
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(fakeDocumentResource);
+    });
+
+    it('should send patch request', () => {
+      expect(request.request.method).toBe('PATCH');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should send body with id, type, attributes and relationships identifiers through data object', () => {
+      expect(request.request.body).toBeTruthy();
+      expect(request.request.body.data).toEqual({
+        id: resource.id,
+        type: resource.type,
+        attributes: resource.attributes,
+        relationships: resource.relationshipsIdentifiers
+      });
+    });
+
+    it('should call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).toHaveBeenCalled();
+    });
+
+    it('should call get method of registerService', () => {
+      expect(registerService.get).toHaveBeenCalled();
+    });
+
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+
+    it('should update resource id', () => {
+      expect(resource.id).toEqual(fakeDocumentResource.data.id);
+    });
+
+    it('should update resource attributes', () => {
+      expect(resource.attributes).toEqual(fakeDocumentResource.data.attributes);
+    });
+  });
+
+  describe('delete', () => {
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.delete().subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Delete failed'));
+    });
+
+    beforeEach(() => {
+      resource.delete().subscribe(res => expect(res).toBeNull());
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(null);
+    });
+
+    it('should send delete request', () => {
+      expect(request.request.method).toBe('DELETE');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should not send body', () => {
+      expect(request.request.body).toBeFalsy();
+    });
+
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
+
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
+
+    it('should set resource as deleted', () => {
+      expect(resource.deleted).toBeTruthy();
+    });
+  });
+
+  describe('get to-one relationship', () => {
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.getRelationship(toOneRelationshipName).subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toOneRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Get failed'));
+    });
+
+    beforeEach(() => {
+      resource.getRelationship(toOneRelationshipName).subscribe(res => expect(res).toEqual(jasmine.any(DocumentIdentifier)));
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toOneRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(fakeDocumentIdentifier);
+    });
+
+    it('should send get request', () => {
+      expect(request.request.method).toBe('GET');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should not send body', () => {
+      expect(request.request.body).toBeFalsy();
+    });
+
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
+
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
+
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+  });
+
+  describe('get to-many relationships', () => {
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.getRelationships(toManyRelationshipName).subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Get failed'));
+    });
+
+    beforeEach(() => {
+      resource.getRelationships(toManyRelationshipName).subscribe(res => expect(res).toEqual(jasmine.any(DocumentIdentifiers)));
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(fakeDocumentIdentifiers);
+    });
+
+    it('should send get request', () => {
+      expect(request.request.method).toBe('GET');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should not send body', () => {
+      expect(request.request.body).toBeFalsy();
+    });
+
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
+
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
+
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+  });
+
+  describe('update to-one relationship', () => {
+    const newRelationship = new Resource('4', 'fake');
+
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.updateRelationship(toOneRelationshipName, newRelationship).subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toOneRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Get failed'));
+    });
+
+    beforeEach(() => {
+      resource.updateRelationship(toOneRelationshipName, newRelationship)
+        .subscribe(res => expect(res).toEqual(jasmine.any(DocumentIdentifier)));
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toOneRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(fakeDocumentIdentifier);
+    });
+
+    it('should send patch request', () => {
+      expect(request.request.method).toBe('PATCH');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should send body with new relationship id and type through data object', () => {
+      expect(request.request.body).toBeTruthy();
+      expect(request.request.body.data).toEqual({
+        id: newRelationship.id,
+        type: newRelationship.type
+      });
+    });
+
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
+
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
+
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+
+    it('should replace the resource by the new one', () => {
+      expect(resource.relationships[toOneRelationshipName].data).toEqual(newRelationship);
+      expect(resource.relationships[toOneRelationshipName].links).toEqual(fakeDocumentIdentifier.links);
+    });
+  });
+
+  describe('update to-many relationships', () => {
     const newRelationships = [
-      new Resource('2', type)
-    ];
-    const oldRelationships = [
-      new Resource('3', type)
-    ];
-    const documentWithManyIdentifiers: JsonDocumentIdentifiers = {
-      data: [
-        { id: newRelationships[0].id, type, meta: { } }
-      ],
-      meta: { },
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-
-    resource.id = id;
-    resource.relationships[relationship] = {
-      data: oldRelationships,
-      links: {}
-    };
-
-    resource.updateRelationships(relationship, newRelationships)
-      .subscribe(() => {
-        expect(resource.relationships[relationship].data).not.toEqual(oldRelationships);
-        expect(resource.relationships[relationship].data).toEqual(newRelationships);
-        expect(resource.deleted).toBeFalsy();
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
-      });
-
-    const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
-
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('PATCH');
-    expect(request.request.responseType).toEqual('json');
-    expect(request.request.body).toBeTruthy();
-
-    expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data[0].id).toEqual(newRelationships[0].id);
-    expect(request.request.body.data[0].type).toEqual(newRelationships[0].type);
-
-    request.flush(documentWithManyIdentifiers);
-  })));
-
-  it('should save relationships', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const oldRelationship = new Resource('3', type);
-    const newRelationship = new Resource('2', type);
-    const documentWithManyIdentifiers: JsonDocumentIdentifiers = {
-      data: [
-        { id: oldRelationship.id, type, meta: { } },
-        { id: newRelationship.id, type, meta: { } }
-      ],
-      meta: { },
-      links: { },
-      jsonapi: {
-        version,
-        meta: { }
-      }
-    };
-
-    resource.id = id;
-    resource.relationships[relationship] = {
-      data: [oldRelationship],
-      links: {}
-    };
-
-    resource.saveRelationships(relationship, [newRelationship])
-      .subscribe(() => {
-        const resources = resource.relationships[relationship].data as Resource[];
-        expect(resources.length).toEqual(2);
-        expect(resources[0]).toEqual(oldRelationship);
-        expect(resources[1]).toEqual(newRelationship);
-        expect(resource.deleted).toBeFalsy();
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
-      });
-
-    const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
-
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body).toBeTruthy();
-    expect(request.request.responseType).toEqual('json');
-
-    expect(request.request.body.data).toBeTruthy();
-    expect(request.request.body.data.length).toEqual(1);
-    expect(request.request.body.data[0].id).toEqual(newRelationship.id);
-    expect(request.request.body.data[0].type).toEqual(newRelationship.type);
-
-    request.flush(documentWithManyIdentifiers);
-  })));
-
-  it('should delete relationships', async(inject([
-    HttpTestingController
-  ], (backend: HttpTestingController) => {
-    const originalRelationships: any[] = [
-      { id: '1', type, attributes: { } },
-      { id: '2', type, attributes: { } },
-      { id: '3', type, attributes: { } }
+      new Resource('3', 'fake'),
+      new Resource('4', 'fake')
     ];
 
-    const relationshipToRemove = [
-      {id: '1', type, meta: {}},
-      {id: '2', type, meta: {}}
-    ];
+    let request: TestRequest;
 
-    const commonRelationships = originalRelationships
-      .filter(data => relationshipToRemove.map(toRemove => toRemove.id).includes(data.id));
+    beforeEach(() => resource.id = '1');
 
-    const differentsRelationships = originalRelationships
-      .filter(data => !relationshipToRemove.map(toRemove => toRemove.id).includes(data.id));
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.updateRelationships(toManyRelationshipName, newRelationships).subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Get failed'));
+    });
 
-    resource.id = id;
-    resource.relationships[relationship] = {
-      data: originalRelationships,
-      links: { }
-    };
+    beforeEach(() => {
+      resource.updateRelationships(toManyRelationshipName, newRelationships)
+        .subscribe(res => expect(res).toEqual(jasmine.any(DocumentIdentifiers)));
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(fakeDocumentIdentifiers);
+    });
 
-    resource.deleteRelationships(relationship, relationshipToRemove)
-      .subscribe(() => {
-        const relationshipData = resource.relationships[relationship].data as Resource[];
-        expect(relationshipData.length).toEqual(originalRelationships.length - commonRelationships.length);
-        relationshipData.map((data, index) => {
-          expect(data.id).toEqual(differentsRelationships[index].id);
+    it('should send patch request', () => {
+      expect(request.request.method).toBe('PATCH');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should send body with new relationships ids and types through data object', () => {
+      expect(request.request.body).toBeTruthy();
+      request.request.body.data.map((data, index) => {
+        expect(data).toEqual({
+          id: newRelationships[index].id,
+          type: newRelationships[index].type
         });
-        expect(resource.deleted).toBeFalsy();
-        expect(parametersService.httpParams).not.toHaveBeenCalled();
-        expect(registersService.get).not.toHaveBeenCalled();
       });
+    });
 
-    const request = backend.expectOne(`${url}/${type}/${id}/relationships/${relationship}`);
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
 
-    expect(request.cancelled).toBeFalsy();
-    expect(request.request.method).toBe('DELETE');
-    expect(request.request.body).toBeTruthy();
-    expect(request.request.responseType).toEqual('json');
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
 
-    request.flush(null);
-  })));
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+
+    it('should replace the resources by the new ones', () => {
+      expect(resource.relationships[toManyRelationshipName].data).toEqual(newRelationships);
+      expect(resource.relationships[toManyRelationshipName].links).toEqual(fakeDocumentIdentifier.links);
+    });
+  });
+
+  describe('save relationships', () => {
+    const addedRelationships = [
+      new Resource('3', 'fake'),
+      new Resource('4', 'fake')
+    ];
+
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.saveRelationships(toManyRelationshipName, addedRelationships).subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Get failed'));
+    });
+
+    beforeEach(() => {
+      resource.saveRelationships(toManyRelationshipName, addedRelationships)
+        .subscribe(res => expect(res).toEqual(jasmine.any(DocumentIdentifiers)));
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(fakeDocumentIdentifiers);
+    });
+
+    it('should send post request', () => {
+      expect(request.request.method).toBe('POST');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should send body with new relationships ids and types through data object', () => {
+      expect(request.request.body).toBeTruthy();
+      request.request.body.data.map((data, index) => {
+        expect(data).toEqual({
+          id: addedRelationships[index].id,
+          type: addedRelationships[index].type
+        });
+      });
+    });
+
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
+
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
+
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+
+    it('should add the added resources into relationships list', () => {
+      const newRelationships = resource.relationships[toManyRelationshipName].data as Resource[];
+      addedRelationships.map(relationship => expect(newRelationships).toContain(relationship));
+      expect(resource.relationships[toManyRelationshipName].links).toEqual(fakeDocumentIdentifiers.links);
+    });
+  });
+
+  describe('delete relationships', () => {
+    const deletedRelationships = [
+      new Resource('3', 'fake')
+    ];
+
+    let request: TestRequest;
+
+    beforeEach(() => resource.id = '1');
+
+    it('should return a DocumentErrors when failed', (done) => {
+      resource.deleteRelationships(toManyRelationshipName, deletedRelationships).subscribe(
+        () => done.fail('should not succeed'),
+        err => {
+          expect(err).toEqual(jasmine.any(DocumentErrors));
+          done();
+        }
+      );
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.error(new ErrorEvent('Get failed'));
+    });
+
+    beforeEach(() => {
+      resource.deleteRelationships(toManyRelationshipName, deletedRelationships)
+        .subscribe(res => expect(res).toBeNull());
+      request = httpMock.expectOne(`${url}/${resource.type}/${resource.id}/relationships/${toManyRelationshipName}`);
+      expect(request.cancelled).toBeFalsy();
+      request.flush(null);
+    });
+
+    it('should send delete request', () => {
+      expect(request.request.method).toBe('DELETE');
+      expect(request.request.responseType).toEqual('json');
+    });
+
+    it('should send body with new relationships ids and types through data object', () => {
+      expect(request.request.body).toBeTruthy();
+      request.request.body.data.map((data, index) => {
+        expect(data).toEqual({
+          id: deletedRelationships[index].id,
+          type: deletedRelationships[index].type
+        });
+      });
+    });
+
+    it('should not call httpParams method of parametersService', () => {
+      expect(parametersService.httpParams).not.toHaveBeenCalled();
+    });
+
+    it('should not call get method of registerService', () => {
+      expect(registerService.get).not.toHaveBeenCalled();
+    });
+
+    it('should not set resource as deleted', () => {
+      expect(resource.deleted).toBeFalsy();
+    });
+
+    it('should remove the removed relationship from relationships list', () => {
+      const newRelationships = resource.relationships[toManyRelationshipName].data as Resource[];
+      deletedRelationships.map(relationship => expect(newRelationships).not.toContain(relationship));
+    });
+  });
 });

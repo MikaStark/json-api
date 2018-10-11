@@ -1,3 +1,4 @@
+export * from './error';
 export * from './attributes';
 export * from './json-identifier';
 export * from './json-resource';
