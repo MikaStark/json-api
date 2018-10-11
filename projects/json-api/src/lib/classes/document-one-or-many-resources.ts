@@ -18,15 +18,19 @@ export class DocumentOneOrManyResources extends Document {
     links: Links
   ): Resource {
     const resourceType = JsonApiModule.register.get(type);
-    return new resourceType(id, type, meta, attributes, relationships, links);
+    const resource = new resourceType(id, type, meta, attributes, null, links);
+    if (relationships) {
+      resource.relationships = relationships;
+    }
+    return resource;
   }
 
-  protected findResource(id: string, type: string, meta: Meta): Resource {
+  protected findResource(resource: Resource): Resource {
     let relationship = this.included
       .concat(this.data || [])
-      .find(included => included.id === id && included.type === type);
+      .find(included => included.id === resource.id && included.type === resource.type);
     if (!relationship) {
-      relationship = new Resource(id, type, meta);
+      relationship = new Resource(resource.id, resource.type, resource.meta);
     }
     return relationship;
   }
@@ -35,10 +39,10 @@ export class DocumentOneOrManyResources extends Document {
     for (const name in resource.relationships) {
       if (Array.isArray(resource.relationships[name].data)) {
         const relationships = resource.relationships[name].data as Resource[];
-        resource.relationships[name].data = relationships.map(data => this.findResource(data.id, data.type, data.meta));
+        resource.relationships[name].data = relationships.map(data => this.findResource(data));
       } else if (resource.relationships[name].data) {
         const relationship = resource.relationships[name].data as Resource;
-        resource.relationships[name].data = this.findResource(relationship.id, relationship.type, relationship.meta);
+        resource.relationships[name].data = this.findResource(relationship);
       }
     }
   }
