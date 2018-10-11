@@ -43,17 +43,19 @@ describe('JsonApiParametersService', () => {
 
   it('should set filter', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
     const filter = {
-      key1: ['value1'],
-      key2: ['value2']
+      key1: ['value1', 'value2'],
+      key2: 'value3',
+      key3: false
     };
     Object.keys(filter).map(key => {
       expect(params.has(`filter[${key}]`)).toBeFalsy();
     });
     params = service.httpParams({filter});
-    Object.keys(filter).map(key => {
-      expect(params.has(`filter[${key}]`)).toBeTruthy();
-      expect(params.get(`filter[${key}]`)).toBe(filter[key].join(','));
-    });
+    expect(params.has('filter[key1]')).toBeTruthy();
+    expect(params.get('filter[key1]')).toEqual(filter.key1.join(','));
+    expect(params.has('filter[key2]')).toBeTruthy();
+    expect(params.get('filter[key2]')).toEqual(filter.key2);
+    expect(params.has('filter[key3]')).toBeFalsy();
   }));
 
   it('should set page', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
