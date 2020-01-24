@@ -1,91 +1,57 @@
-import { TestBed, inject } from '@angular/core/testing';
-
 import { JsonApiParametersService } from './json-api-parameters.service';
+import { TestBed } from '@angular/core/testing';
 import { HttpParams } from '@angular/common/http';
 
-describe('JsonApiParametersService', () => {
-  let params: HttpParams;
+const parameters = {
+  single: 'value',
+  multiple: ['value', 'other'],
+  object: {
+    single: 'value',
+    multiple: ['value', 'other']
+  }
+};
 
-  beforeEach(() => TestBed.configureTestingModule({
-    providers: [JsonApiParametersService]
-  }));
+describe('JsonApiParametersService', () => {
+  let service: JsonApiParametersService;
 
   beforeEach(() => {
-    params = new HttpParams;
-  }),
+    TestBed.configureTestingModule({});
+    service = TestBed.get(JsonApiParametersService);
+  });
 
-  it('should be created', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
+  it('should be created', () => {
     expect(service).toBeTruthy();
-  }));
+  });
 
-  it('should set include', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const include = ['include1', 'include2'];
-    expect(params.has('include')).toBeFalsy();
-    params = service.httpParams({include});
-    expect(params.has('include')).toBeTruthy();
-    expect(params.get('include')).toBe(include.join(','));
-  }));
+  it('should create HttpParams', () => {
+    const params = service.create({});
+    expect(params).toEqual(jasmine.any(HttpParams));
+  });
 
-  it('should set fields', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const fields = {
-      entity1: ['field1', 'field2'],
-      entity2: ['field3', 'field4'],
-    };
-    Object.keys(fields).map(key => {
-      expect(params.has(`fields[${key}]`)).toBeFalsy();
-    });
-    params = service.httpParams({fields});
-    Object.keys(fields).map(key => {
-      expect(params.has(`fields[${key}]`)).toBeTruthy();
-      expect(params.get(`fields[${key}]`)).toBe(fields[key].join(','));
-    });
-  }));
+  it('should set nothing wihout params', () => {
+    const nullParams = service.create(null);
+    expect(nullParams.keys().length).toEqual(0);
+    const undefinedParams = service.create(undefined);
+    expect(undefinedParams.keys().length).toEqual(0);
+  });
 
-  it('should set filter', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const filter = {
-      key1: ['value1', 'value2'],
-      key2: 'value3',
-      key3: false
-    };
-    Object.keys(filter).map(key => {
-      expect(params.has(`filter[${key}]`)).toBeFalsy();
-    });
-    params = service.httpParams({filter});
-    expect(params.has('filter[key1]')).toBeTruthy();
-    expect(params.get('filter[key1]')).toEqual(filter.key1.join(','));
-    expect(params.has('filter[key2]')).toBeTruthy();
-    expect(params.get('filter[key2]')).toEqual(filter.key2);
-    expect(params.has('filter[key3]')).toBeFalsy();
-  }));
+  it('should set single value params', () => {
+    const params = service.create(parameters);
+    expect(params.get('single')).toBe(parameters.single);
+  });
 
-  it('should set page', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const page = {
-      number: 5,
-      size: 25
-    };
-    Object.keys(page).map(key => {
-      expect(params.has(`page[${key}]`)).toBeFalsy();
-    });
-    params = service.httpParams({page});
-    Object.keys(page).map(key => {
-      expect(params.has(`page[${key}]`)).toBeTruthy();
-      expect(params.get(`page[${key}]`)).toBe(page[key].toString());
-    });
-  }));
+  it('should set array params', () => {
+    const params = service.create(parameters);
+    expect(params.get('multiple')).toBe(parameters.multiple.join(','));
+  });
 
-  it('should set sort', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const sort = ['sort1', 'sort2'];
-    expect(params.has('page')).toBeFalsy();
-    params = service.httpParams({sort});
-    expect(params.has('sort')).toBeTruthy();
-    expect(params.get('sort')).toBe(sort.join(','));
-  }));
+  it('should set single value collection params', () => {
+    const params = service.create(parameters);
+    expect(params.get('object[single]')).toBe(parameters.object.single);
+  });
 
-  it('should set langs', inject([JsonApiParametersService], (service: JsonApiParametersService) => {
-    const langs = ['lang1', 'lang2'];
-    expect(params.has('page')).toBeFalsy();
-    params = service.httpParams({langs});
-    expect(params.has('langs')).toBeTruthy();
-    expect(params.get('langs')).toBe(langs.join(','));
-  }));
+  it('should set array collection params', () => {
+    const params = service.create(parameters);
+    expect(params.get('object[multiple]')).toBe(parameters.object.multiple.join(','));
+  });
 });

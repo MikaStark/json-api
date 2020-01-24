@@ -1,40 +1,52 @@
-import { NgModule, Optional, SkipSelf, Inject } from '@angular/core';
-import { HttpClientModule, HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
-import { JsonApiInterceptorService } from './json-api-interceptor.service';
-import { JSON_API_URL } from './json-api-url';
-import { JsonApiParametersService } from './json-api-parameters.service';
-import { JsonApiRegisterService } from './json-api-register.service';
+import { NgModule, Optional, SkipSelf } from '@angular/core';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { JsonApiInterceptor } from './json-api.interceptor';
 
+/**
+ * JSON API main module
+ *
+ * This module import/export HttpClient and provide an interceptor providing mandatory headers
+ *
+ * It should be imported only one time in AppModule with at least a provider for JSON_API_URL token
+ *
+ * @see https://jsonapi.org/format/#content-negotiation-clients
+ * @example
+ * ```typescript
+ * @NgModule({
+ *   imports: [
+ *     // ...
+ *     JsonApiModule
+ *   ],
+ *   providers: [
+ *     // ...
+ *     { provide: JSON_API_URL, useValue: 'http://my.api.com' }
+ *     // optional
+ *     { provide: JSON_API_VERSION, useValue: 'v0' }
+ *   ],
+ *   // ...
+ * })
+ * export class AppModule { }
+ * ```
+ */
 @NgModule({
   imports: [HttpClientModule],
   exports: [HttpClientModule],
   providers: [
     {
       provide: HTTP_INTERCEPTORS,
-      useClass: JsonApiInterceptorService,
+      useClass: JsonApiInterceptor,
       multi: true
     }
   ]
 })
 export class JsonApiModule {
-  static url: string = null;
-  static http: HttpClient = null;
-  static params: JsonApiParametersService = null;
-  static register: JsonApiRegisterService = null;
-
-  constructor(
-    @Optional() @SkipSelf() parentModule: JsonApiModule,
-    @Inject(JSON_API_URL) url: string,
-    http: HttpClient,
-    params: JsonApiParametersService,
-    register: JsonApiRegisterService
-  ) {
+  /**
+   * Constructor
+   * @param parentModule eventual parent module (should not exist)
+   */
+  constructor(@Optional() @SkipSelf() parentModule: JsonApiModule) {
     if (parentModule) {
       throw new Error('JsonApiModule is already loaded. Import it in the AppModule only');
     }
-    JsonApiModule.url = url;
-    JsonApiModule.http = http;
-    JsonApiModule.params = params;
-    JsonApiModule.register = register;
   }
 }
