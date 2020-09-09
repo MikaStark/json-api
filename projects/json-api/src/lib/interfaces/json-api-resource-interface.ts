@@ -1,7 +1,7 @@
+import { JsonApiAttribute } from './json-api-attributes';
 import { JsonApiIdentifierInterface } from './json-api-identifier-interface';
 import { JsonApiLinks } from './json-api-links';
-import { JsonApiAttributes } from './json-api-attributes';
-import { JsonApiRelationships } from './json-api-relationships';
+import { JsonApiRelationship } from './json-api-relationships';
 
 /**
  * ### Resource Objects
@@ -54,12 +54,16 @@ export interface JsonApiResourceInterface extends JsonApiIdentifierInterface {
    * An [attributes object](https://jsonapi.org/format/1.1/#document-resource-object-attributes)
    * representing some of the resource’s data
    */
-  attributes?: JsonApiAttributes;
+  attributes?: {
+    [name: string]: JsonApiAttribute;
+  };
   /**
    * A [relationships object](https://jsonapi.org/format/1.1/#document-resource-object-relationships)
    * describing relationships between the resource and other JSON:API resources.
    */
-  relationships?: JsonApiRelationships;
+  relationships?: {
+    [name: string]: JsonApiRelationship;
+  };
   /**
    * a [links object](https://jsonapi.org/format/1.1/#document-links)
    * containing links related to the resource.

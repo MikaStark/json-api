@@ -1,6 +1,14 @@
-# Json-Api
+# JSON API for Angular
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 8.3.23.
+This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 10.0.0.
+
+## Getting started
+
+Before anything, you must build the underlying **json-api library**
+
+```
+ng build json-api
+```
 
 ## Development server
 

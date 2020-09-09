@@ -3,14 +3,7 @@ import { JsonApiLinks } from './json-api-links';
 import { JsonApiMeta } from './json-api-meta';
 
 /**
- * ### Relationships
- *
- * The value of the `relationships` key **MUST** be an object (a “relationships object”).
- * Members of the relationships object (“relationships”) represent references from the
- * [resource object](https://jsonapi.org/format/1.1/#document-resource-objects) in which
- * it’s defined to other resource objects.
- *
- * Relationships may be to-one or to-many.
+ * ### Relationship
  *
  * A “relationship object” **MUST** contain at least one of the following:
  *
@@ -32,16 +25,29 @@ import { JsonApiMeta } from './json-api-meta';
  * links in a relationship object **MUST** paginate the relationship data, not the related resources.
  * @see https://jsonapi.org/format/1.1/#document-resource-object-relationships
  */
-export interface JsonApiRelationships<T = JsonApiIdentifierInterface> {
-  [name: string]: {
-    /** A links object */
-    links?: JsonApiLinks;
-    /** A [resource linkage](https://jsonapi.org/format/1.1/#document-resource-object-linkage) */
-    data?: T | T[];
-    /**
-     * a [meta object](https://jsonapi.org/format/1.1/#document-meta) that contains
-     * non-standard meta-information about the relationship.
-     */
-    meta?: JsonApiMeta;
-  };
+export interface JsonApiRelationship {
+  /** A links object */
+  links?: JsonApiLinks;
+  /** A [resource linkage](https://jsonapi.org/format/1.1/#document-resource-object-linkage) */
+  data?: JsonApiIdentifierInterface | JsonApiIdentifierInterface[];
+  /**
+   * a [meta object](https://jsonapi.org/format/1.1/#document-meta) that contains
+   * non-standard meta-information about the relationship.
+   */
+  meta?: JsonApiMeta;
+}
+
+/**
+ * ### Relationships
+ *
+ * The value of the `relationships` key **MUST** be an object (a “relationships object”).
+ * Members of the relationships object (“relationships”) represent references from the
+ * [resource object](https://jsonapi.org/format/1.1/#document-resource-objects) in which
+ * it’s defined to other resource objects.
+ *
+ * Relationships may be to-one or to-many.
+ * @see https://jsonapi.org/format/1.1/#document-resource-object-relationships
+ */
+export interface JsonApiRelationships {
+  [name: string]: JsonApiRelationship;
 }

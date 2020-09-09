@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "jsonapi": {
+    "json-api-example": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -12,22 +12,30 @@
       },
       "root": "",
       "sourceRoot": "src",
-      "prefix": "app",
+      "prefix": "japi",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "outputPath": "dist/jsonapi",
+            "outputPath": "dist/json-api-example",
             "index": "src/index.html",
             "main": "src/main.ts",
             "polyfills": "src/polyfills.ts",
             "tsConfig": "tsconfig.app.json",
-            "aot": false,
+            "aot": true,
             "assets": ["src/favicon.ico", "src/assets"],
-            "styles": ["src/styles.scss"],
+            "styles": ["src/styles.scss", "node_modules/flag-icon-css/css/flag-icon.min.css"],
             "scripts": []
           },
           "configurations": {
+            "staging": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.staging.ts"
+                }
+              ]
+            },
             "production": {
               "fileReplacements": [
                 {
@@ -40,7 +48,6 @@
               "sourceMap": false,
               "extractCss": true,
               "namedChunks": false,
-              "aot": true,
               "extractLicenses": true,
               "vendorChunk": false,
               "buildOptimizer": true,
@@ -62,18 +69,21 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "jsonapi:build"
+            "browserTarget": "json-api-example:build"
           },
           "configurations": {
+            "staging": {
+              "browserTarget": "json-api-example:build:staging"
+            },
             "production": {
-              "browserTarget": "jsonapi:build:production"
+              "browserTarget": "json-api-example:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "jsonapi:build"
+            "browserTarget": "json-api-example:build"
           }
         },
         "test": {
@@ -84,18 +94,14 @@
             "tsConfig": "tsconfig.spec.json",
             "karmaConfig": "karma.conf.js",
             "assets": ["src/favicon.ico", "src/assets"],
-            "styles": ["src/styles.scss"],
+            "styles": ["src/styles.scss", "node_modules/flag-icon-css/css/flag-icon.min.css"],
             "scripts": []
           }
         },
         "lint": {
           "builder": "@angular-devkit/build-angular:tslint",
           "options": {
-            "tsConfig": [
-              "tsconfig.app.json",
-              "tsconfig.spec.json",
-              "e2e/tsconfig.json"
-            ],
+            "tsConfig": ["tsconfig.app.json", "tsconfig.spec.json", "e2e/tsconfig.json"],
             "exclude": ["**/node_modules/**"]
           }
         },
@@ -103,11 +109,14 @@
           "builder": "@angular-devkit/build-angular:protractor",
           "options": {
             "protractorConfig": "e2e/protractor.conf.js",
-            "devServerTarget": "jsonapi:serve"
+            "devServerTarget": "json-api-example:serve"
           },
           "configurations": {
+            "staging": {
+              "devServerTarget": "json-api-example:serve:staging"
+            },
             "production": {
-              "devServerTarget": "jsonapi:serve:production"
+              "devServerTarget": "json-api-example:serve:production"
             }
           }
         }
@@ -124,6 +133,11 @@
           "options": {
             "tsConfig": "projects/json-api/tsconfig.lib.json",
             "project": "projects/json-api/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/json-api/tsconfig.lib.prod.json"
+            }
           }
         },
         "test": {
@@ -147,5 +161,5 @@
       }
     }
   },
-  "defaultProject": "jsonapi"
+  "defaultProject": "json-api-example"
 }

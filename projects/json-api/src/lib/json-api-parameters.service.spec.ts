@@ -1,22 +1,22 @@
-import { JsonApiParametersService } from './json-api-parameters.service';
-import { TestBed } from '@angular/core/testing';
 import { HttpParams } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { JsonApiParametersService } from './json-api-parameters.service';
 
 const parameters = {
   single: 'value',
   multiple: ['value', 'other'],
   object: {
     single: 'value',
-    multiple: ['value', 'other']
-  }
+    multiple: ['value', 'other'],
+  },
 };
 
 describe('JsonApiParametersService', () => {
   let service: JsonApiParametersService;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.get(JsonApiParametersService);
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({});
+    service = TestBed.inject(JsonApiParametersService);
   });
 
   it('should be created', () => {

@@ -69,7 +69,6 @@ describe('JsonApiResource', () => {
     expect(resource.relationships.foo.data).toEqual({
       type: relationships.foo.data.type,
       id: relationships.foo.data.id,
-      meta: relationships.foo.data.meta,
     });
     expect(resource.relationships.foo.meta).toEqual(relationships.foo.meta);
     expect(resource.relationships.foo.links).toEqual(relationships.foo.links);
@@ -77,7 +76,6 @@ describe('JsonApiResource', () => {
       relationships.foos.data.map(foo => ({
         type: foo.type,
         id: foo.id,
-        meta: foo.meta,
       })),
     );
     expect(resource.relationships.foos.meta).toEqual(relationships.foos.meta);
@@ -101,5 +99,27 @@ describe('JsonApiResource', () => {
     const resource = new Foo({ links });
     expect(resource.links).toBeTruthy();
     expect(resource.links).toEqual(links);
+  });
+
+  it('should get relationships metadata', () => {
+    const relationships = {
+      foo: {
+        data: new Foo({ id: '1' }),
+        meta: { foo: 1 },
+      },
+    };
+    const resource = new Foo({ relationships });
+    expect(resource.relationships.foo.meta).toEqual(relationships.foo.meta);
+  });
+
+  it('should get relationships links', () => {
+    const relationships = {
+      foo: {
+        data: new Foo({ id: '1' }),
+        links: { self: '...', related: '...' },
+      },
+    };
+    const resource = new Foo({ relationships });
+    expect(resource.relationships.foo.links).toEqual(relationships.foo.links);
   });
 });

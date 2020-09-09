@@ -6,11 +6,11 @@ export interface IdentifierOptions {
 
 export function Identifier(options: IdentifierOptions): ClassDecorator {
   return (target: any) => {
-    const models = Reflect.getMetadata('models', JsonApiIdentifier) || {};
+    const models = Reflect.getMetadata('resourceType', JsonApiIdentifier) || {};
 
     models[options.type] = target;
 
-    Reflect.defineMetadata('models', models, JsonApiIdentifier);
-    Reflect.defineMetadata('models', options, target);
+    Reflect.defineMetadata('resourceType', models, JsonApiIdentifier);
+    Reflect.defineMetadata('resourceType', options, target);
   };
 }

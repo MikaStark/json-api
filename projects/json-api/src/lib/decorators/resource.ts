@@ -6,11 +6,11 @@ export interface ResourceOptions {
 
 export function Resource(options: ResourceOptions): ClassDecorator {
   return (target: any) => {
-    const models = Reflect.getMetadata('models', JsonApiResource) || {};
+    const models = Reflect.getMetadata('resourceType', JsonApiResource) || {};
 
     models[options.type] = target;
 
-    Reflect.defineMetadata('models', models, JsonApiResource);
-    Reflect.defineMetadata('models', options, target);
+    Reflect.defineMetadata('resourceType', models, JsonApiResource);
+    Reflect.defineMetadata('resourceType', options, target);
   };
 }

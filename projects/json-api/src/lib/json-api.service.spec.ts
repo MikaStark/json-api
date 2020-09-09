@@ -1,13 +1,11 @@
-import { TestBed } from '@angular/core/testing';
-
-import { JsonApiService } from './json-api.service';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { JSON_API_URL } from './json-api-url';
-import { JsonApiParametersService } from './json-api-parameters.service';
+import { Type } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { JsonApiResource } from './classes';
 import { Attribute, Relationship, Resource } from './decorators';
-import { Type } from '@angular/core';
-import { JsonApiDocument, JsonApiResourceInterface } from './interfaces';
+import { JsonApiParametersService } from './json-api-parameters.service';
+import { JSON_API_URL } from './json-api-url';
+import { JsonApiService } from './json-api.service';
 
 @Resource({ type: 'foos' })
 class Foo extends JsonApiResource {
@@ -23,16 +21,16 @@ describe('JsonApiService', () => {
 
   const parametersService = jasmine.createSpyObj('JsonApiParametersService', ['create']);
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
         { provide: JSON_API_URL, useValue: 'http://www.fake.com' },
-        { provide: JsonApiParametersService, useValue: parametersService }
-      ]
+        { provide: JsonApiParametersService, useValue: parametersService },
+      ],
     });
-    service = TestBed.get(JsonApiService);
-    httpMock = TestBed.get(HttpTestingController as Type<HttpTestingController>);
+    service = TestBed.inject(JsonApiService);
+    httpMock = TestBed.inject(HttpTestingController as Type<HttpTestingController>);
   });
 
   beforeEach(() => {
@@ -55,34 +53,34 @@ describe('JsonApiService', () => {
           type: 'foos',
           attributes: {
             attr: 'one',
-            attr2: 'two'
+            attr2: 'two',
           },
           relationships: {
             rel: {
-              data: { type: 'foos', id: '2' }
+              data: { type: 'foos', id: '2' },
             },
             rels: {
-              data: [{ type: 'foos', id: '2' }]
-            }
+              data: [{ type: 'foos', id: '2' }],
+            },
           },
           meta: {
-            some: 'data'
+            some: 'data',
           },
           links: {
             self: 'self',
-            related: 'related'
-          }
-        }
+            related: 'related',
+          },
+        },
       ],
       links: {
         self: 'self',
-        related: 'related'
+        related: 'related',
       },
       meta: {
-        some: 'meta'
+        some: 'meta',
       },
       jsonapi: {
-        version: '0'
+        version: '0',
       },
       included: [
         {
@@ -90,20 +88,20 @@ describe('JsonApiService', () => {
           type: 'foos',
           attributes: {
             attr: 'one',
-            attr2: 'two'
+            attr2: 'two',
           },
           relationships: {
             rel: {
-              data: { type: 'foos', id: '1' }
+              data: { type: 'foos', id: '1' },
             },
             rels: {
-              data: [{ type: 'foos', id: '1' }]
-            }
+              data: [{ type: 'foos', id: '1' }],
+            },
           },
           meta: {},
-          links: {}
-        }
-      ]
+          links: {},
+        },
+      ],
     };
 
     service.all(Foo).subscribe(({ data, errors, included, jsonapi, links, meta }) => {
@@ -111,14 +109,14 @@ describe('JsonApiService', () => {
       expect(included.length).toEqual(1);
       expect(errors).toBeUndefined();
       expect(jsonapi).toEqual({
-        version: '0'
+        version: '0',
       });
       expect(links).toEqual({
         self: 'self',
-        related: 'related'
+        related: 'related',
       });
       expect(meta).toEqual({
-        some: 'meta'
+        some: 'meta',
       });
       const [resource] = data;
       expect(resource).toEqual(jasmine.any(JsonApiResource));
@@ -138,33 +136,33 @@ describe('JsonApiService', () => {
         type: 'foos',
         attributes: {
           attr: 'one',
-          attr2: 'two'
+          attr2: 'two',
         },
         relationships: {
           rel: {
-            data: { type: 'foos', id: '2' }
+            data: { type: 'foos', id: '2' },
           },
           rels: {
-            data: [{ type: 'foos', id: '2' }]
-          }
+            data: [{ type: 'foos', id: '2' }],
+          },
         },
         meta: {
-          some: 'data'
+          some: 'data',
         },
         links: {
           self: 'self',
-          related: 'related'
-        }
+          related: 'related',
+        },
       },
       links: {
         self: 'self',
-        related: 'related'
+        related: 'related',
       },
       meta: {
-        some: 'meta'
+        some: 'meta',
       },
       jsonapi: {
-        version: '0'
+        version: '0',
       },
       included: [
         {
@@ -172,20 +170,20 @@ describe('JsonApiService', () => {
           type: 'foos',
           attributes: {
             attr: 'one',
-            attr2: 'two'
+            attr2: 'two',
           },
           relationships: {
             rel: {
-              data: { type: 'foos', id: '1' }
+              data: { type: 'foos', id: '1' },
             },
             rels: {
-              data: [{ type: 'foos', id: '1' }]
-            }
+              data: [{ type: 'foos', id: '1' }],
+            },
           },
           meta: {},
-          links: {}
-        }
-      ]
+          links: {},
+        },
+      ],
     };
 
     service.find(Foo, '1').subscribe(({ data, meta, links, jsonapi }) => {
@@ -206,8 +204,8 @@ describe('JsonApiService', () => {
 
       service
         .save(resource)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not save a resource without type')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not save a resource without type'),
         );
 
       httpMock.expectNone(`http://www.fake.com/${resource.type}`);
@@ -219,9 +217,9 @@ describe('JsonApiService', () => {
         attributes: { attr: 'one' },
         relationships: {
           rel: {
-            data: new Foo({ id: '2' })
-          }
-        }
+            data: new Foo({ id: '2' }),
+          },
+        },
       });
 
       service.save(resource).subscribe();
@@ -233,14 +231,14 @@ describe('JsonApiService', () => {
           type: 'foos',
           id: '1',
           attributes: {
-            attr: 'one'
+            attr: 'one',
           },
           relationships: {
             rel: {
-              data: { type: 'foos', id: '2' }
-            }
-          }
-        }
+              data: { type: 'foos', id: '2' },
+            },
+          },
+        },
       });
     });
   });
@@ -251,8 +249,8 @@ describe('JsonApiService', () => {
 
       service
         .update(resource)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not update a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not update a resource without id'),
         );
 
       httpMock.expectNone(`http://www.fake.com/${resource.type}/${resource.id}`);
@@ -263,8 +261,8 @@ describe('JsonApiService', () => {
 
       service
         .update(resource)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not update a resource without type')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not update a resource without type'),
         );
 
       httpMock.expectNone(`http://www.fake.com/${resource.type}/${resource.id}`);
@@ -276,9 +274,9 @@ describe('JsonApiService', () => {
         attributes: { attr: 'one' },
         relationships: {
           rel: {
-            data: new Foo({ id: '2' })
-          }
-        }
+            data: new Foo({ id: '2' }),
+          },
+        },
       });
 
       service.update(resource).subscribe();
@@ -288,14 +286,14 @@ describe('JsonApiService', () => {
           type: 'foos',
           id: '1',
           attributes: {
-            attr: 'one'
+            attr: 'one',
           },
           relationships: {
             rel: {
-              data: { type: 'foos', id: '2' }
-            }
-          }
-        }
+              data: { type: 'foos', id: '2' },
+            },
+          },
+        },
       });
     });
   });
@@ -306,8 +304,8 @@ describe('JsonApiService', () => {
 
       service
         .delete(resource)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not delete a resource without type')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not delete a resource without type'),
         );
 
       httpMock.expectNone(`http://www.fake.com/${resource.type}/${resource.id}`);
@@ -318,8 +316,8 @@ describe('JsonApiService', () => {
 
       service
         .delete(resource)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not delete a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not delete a resource without id'),
         );
 
       httpMock.expectNone(`http://www.fake.com/${resource.type}/${resource.id}`);
@@ -342,12 +340,12 @@ describe('JsonApiService', () => {
 
       service
         .getRelationship(resource, name)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not get relationship a resource without type')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not get relationship a resource without type'),
         );
 
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -356,12 +354,12 @@ describe('JsonApiService', () => {
 
       service
         .getRelationship(resource, name)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not get relationship a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not get relationship a resource without id'),
         );
 
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -370,12 +368,12 @@ describe('JsonApiService', () => {
 
       service.getRelationship(resource, name).subscribe();
       const mock = httpMock.expectOne(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
       expect(mock.cancelled).toBeFalsy();
       expect(mock.request.method).toBe('GET');
       mock.flush({
-        data: { id: resource.id, type: resource.type, meta: resource.meta }
+        data: { id: resource.id, type: resource.type, meta: resource.meta },
       });
     });
   });
@@ -386,12 +384,12 @@ describe('JsonApiService', () => {
 
       service
         .getRelationships(resource, name)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not get relationships of a resource without type')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not get relationships of a resource without type'),
         );
 
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -400,24 +398,24 @@ describe('JsonApiService', () => {
 
       service
         .getRelationships(resource, name)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not get relationships of a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not get relationships of a resource without id'),
         );
 
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
     it('should send a GET request that returns a document with many identifiers', () => {
       const resource = new Foo({ id: '1' });
       const result = {
-        data: [{ id: resource.id, type: resource.type, meta: resource.meta }]
+        data: [{ id: resource.id, type: resource.type, meta: resource.meta }],
       };
 
       service.getRelationships(resource, name).subscribe();
       const mock = httpMock.expectOne(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
       expect(mock.cancelled).toBeFalsy();
       expect(mock.request.method).toBe('GET');
@@ -434,14 +432,14 @@ describe('JsonApiService', () => {
 
       service
         .updateRelationship(resource, name, relationship)
-        .subscribe(fail, error =>
+        .subscribe(fail, (error) =>
           expect(error.message).toEqual(
-            'You can not update relationship of a resource without type'
-          )
+            'You can not update relationship of a resource without type',
+          ),
         );
 
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -450,12 +448,12 @@ describe('JsonApiService', () => {
 
       service
         .updateRelationship(resource, name, relationship)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not update relationship of a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not update relationship of a resource without id'),
         );
 
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -466,12 +464,12 @@ describe('JsonApiService', () => {
         expect(resource[name]).toEqual(relationship);
       });
       const mock = httpMock.expectOne(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
       expect(mock.cancelled).toBeFalsy();
       expect(mock.request.method).toBe('PATCH');
       mock.flush({
-        data: { id: relationship.id, type: relationship.type, meta: relationship.meta }
+        data: { id: relationship.id, type: relationship.type, meta: relationship.meta },
       });
     });
   });
@@ -485,13 +483,13 @@ describe('JsonApiService', () => {
 
       service
         .updateRelationships(resource, name, relationships)
-        .subscribe(fail, error =>
+        .subscribe(fail, (error) =>
           expect(error.message).toEqual(
-            'You can not update relationships of a resource without type'
-          )
+            'You can not update relationships of a resource without type',
+          ),
         );
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -500,11 +498,13 @@ describe('JsonApiService', () => {
 
       service
         .updateRelationships(resource, name, relationships)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not update relationships of a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual(
+            'You can not update relationships of a resource without id',
+          ),
         );
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -515,7 +515,7 @@ describe('JsonApiService', () => {
         expect(resource[name]).toEqual(relationships);
       });
       const mock = httpMock.expectOne(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
       expect(mock.cancelled).toBeFalsy();
       expect(mock.request.method).toBe('PATCH');
@@ -530,11 +530,13 @@ describe('JsonApiService', () => {
       const resource = new JsonApiResource();
       service
         .saveRelationships(resource, name, relationships)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not save relationships of a resource without type')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual(
+            'You can not save relationships of a resource without type',
+          ),
         );
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -543,11 +545,11 @@ describe('JsonApiService', () => {
 
       service
         .saveRelationships(resource, name, relationships)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not save relationships of a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual('You can not save relationships of a resource without id'),
         );
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -560,7 +562,7 @@ describe('JsonApiService', () => {
         expect(resource[name]).toContain(relationships[0]);
       });
       const mock = httpMock.expectOne(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
       expect(mock.cancelled).toBeFalsy();
       expect(mock.request.method).toBe('POST');
@@ -576,13 +578,13 @@ describe('JsonApiService', () => {
 
       service
         .deleteRelationships(resource, name, relationships)
-        .subscribe(fail, error =>
+        .subscribe(fail, (error) =>
           expect(error.message).toEqual(
-            'You can not delete relationships of a resource without type'
-          )
+            'You can not delete relationships of a resource without type',
+          ),
         );
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -591,11 +593,13 @@ describe('JsonApiService', () => {
 
       service
         .deleteRelationships(resource, name, relationships)
-        .subscribe(fail, error =>
-          expect(error.message).toEqual('You can not delete relationships of a resource without id')
+        .subscribe(fail, (error) =>
+          expect(error.message).toEqual(
+            'You can not delete relationships of a resource without id',
+          ),
         );
       httpMock.expectNone(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
     });
 
@@ -608,7 +612,7 @@ describe('JsonApiService', () => {
         expect(resource[name]).not.toContain(relationships[0]);
       });
       const mock = httpMock.expectOne(
-        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`
+        `http://www.fake.com/${resource.type}/${resource.id}/relationships/${name}`,
       );
       expect(mock.cancelled).toBeFalsy();
       expect(mock.request.method).toBe('DELETE');
